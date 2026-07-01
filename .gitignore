@@ -1,0 +1,42 @@
+# ==========================
+# Terraform
+# ==========================
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Keep provider lock file
+!.terraform.lock.hcl
+
+# Terraform variables
+*.auto.tfvars
+terraform.tfvars.local
+
+# ==========================
+# Kubernetes
+# ==========================
+kubeconfig
+*.kubeconfig
+
+# ==========================
+# AWS
+# ==========================
+*.pem
+
+# ==========================
+# IDE
+# ==========================
+.vscode/
+.idea/
+
+# ==========================
+# macOS / Linux
+# ==========================
+.DS_Store
+*
+~
