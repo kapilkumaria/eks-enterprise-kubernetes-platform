@@ -38,5 +38,8 @@ kubeconfig
 # macOS / Linux
 # ==========================
 .DS_Store
-*
-~
+
+# Terraform saved plan files
+tfplan
+destroy.tfplan
+*.tfplan
