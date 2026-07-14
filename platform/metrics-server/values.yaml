@@ -1,0 +1,19 @@
+replicas: 2
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 200Mi
+  limits:
+    cpu: 500m
+    memory: 500Mi
+
+metrics:
+  enabled: true
+
+serviceMonitor:
+  enabled: false

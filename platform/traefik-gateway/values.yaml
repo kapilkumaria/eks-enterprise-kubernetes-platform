@@ -1,0 +1,117 @@
+# ============================================================
+# Traefik Deployment
+# ============================================================
+
+deployment:
+  enabled: true
+  replicas: 2
+
+# ============================================================
+# Kubernetes Providers
+# ============================================================
+
+providers:
+  kubernetesIngress:
+    enabled: false
+
+  kubernetesCRD:
+    enabled: false
+
+  kubernetesGateway:
+    enabled: true
+    experimentalChannel: false
+
+# ============================================================
+# Gateway API Resources
+# ============================================================
+
+gatewayClass:
+  enabled: true
+  name: traefik
+
+gateway:
+  enabled: true
+  name: shared-public-gateway
+
+  listeners:
+    web:
+      port: 8000
+      protocol: HTTP
+      namespacePolicy:
+        from: All
+
+# ============================================================
+# Kubernetes Service
+# ============================================================
+
+service:
+  enabled: true
+  type: LoadBalancer
+
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+
+# ============================================================
+# Traefik EntryPoints
+# ============================================================
+
+ports:
+  web:
+    port: 8000
+    exposedPort: 80
+    protocol: TCP
+
+    expose:
+      default: true
+
+  websecure:
+    port: 8443
+    exposedPort: 443
+    protocol: TCP
+
+    expose:
+      default: true
+
+# ============================================================
+# General Logs
+# ============================================================
+
+log:
+  level: INFO
+  format: json
+
+# ============================================================
+# HTTP Access Logs
+# ============================================================
+
+accessLog:
+  format: json
+
+# ============================================================
+# Resource Requests and Limits
+# ============================================================
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# ============================================================
+# High Availability
+# ============================================================
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# ============================================================
+# Prometheus Metrics
+# ============================================================
+
+metrics:
+  prometheus:
+    enabled: true
