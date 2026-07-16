@@ -1,0 +1,91 @@
+# ============================================================
+# cert-manager CRDs
+# ============================================================
+
+crds:
+  enabled: true
+  keep: true
+
+# ============================================================
+# cert-manager Controller
+# ============================================================
+
+config:
+  enableGatewayAPI: true
+
+replicaCount: 2
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+
+  limits:
+    cpu: 300m
+    memory: 256Mi
+
+# ============================================================
+# cert-manager Webhook
+# ============================================================
+
+webhook:
+  replicaCount: 2
+
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+# ============================================================
+# cert-manager CA Injector
+# ============================================================
+
+cainjector:
+  replicaCount: 2
+
+  resources:
+    requests:
+      cpu: 25m
+      memory: 128Mi
+
+    limits:
+      cpu: 300m
+      memory: 256Mi
+
+# ============================================================
+# Startup API Check
+# ============================================================
+
+startupapicheck:
+  enabled: true
+
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+
+    limits:
+      cpu: 100m
+      memory: 64Mi
+
+# ============================================================
+# Prometheus Metrics
+# ============================================================
+
+prometheus:
+  enabled: true
+
+  servicemonitor:
+    enabled: false
+
+# ============================================================
+# Pod Disruption Budget
+# ============================================================
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
