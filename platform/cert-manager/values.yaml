@@ -11,8 +11,7 @@ crds:
 # ============================================================
 
 config:
-  gatewayAPI:
-    enabled: true
+  enableGatewayAPI: true
 
 replicaCount: 2
 
