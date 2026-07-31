@@ -65,12 +65,33 @@ serviceAccount:
 # ============================================================
 # Workload security
 # ============================================================
+# ============================================================
+# Pod security context
+# ============================================================
+
+podSecurityContext:
+  runAsNonRoot: true
+  fsGroup: 65534
+
+  seccompProfile:
+    type: RuntimeDefault
+
+# ============================================================
+# Container security context
+# ============================================================
 
 securityContext:
+  privileged: false
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
   runAsNonRoot: true
   runAsUser: 65534
   runAsGroup: 65534
-  fsGroup: 65534
+
+  capabilities:
+    drop:
+      - ALL
+
 
 # ============================================================
 # Resource management
