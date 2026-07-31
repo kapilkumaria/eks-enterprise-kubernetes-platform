@@ -1,0 +1,46 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: external-dns
+  namespace: argocd
+
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+
+  labels:
+    app.kubernetes.io/name: external-dns
+    app.kubernetes.io/part-of: enterprise-kubernetes-platform
+
+spec:
+  project: platform
+
+  sources:
+    - repoURL: https://kubernetes-sigs.github.io/external-dns/
+      chart: external-dns
+      targetRevision: 1.21.1
+
+      helm:
+        releaseName: external-dns
+
+        valueFiles:
+          - $values/platform/external-dns/values.yaml
+
+    - repoURL: https://github.com/kapilkumaria/eks-enterprise-kubernetes-platform.git
+      targetRevision: main
+      ref: values
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: external-dns
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

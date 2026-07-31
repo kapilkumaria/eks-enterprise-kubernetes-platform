@@ -15,6 +15,7 @@ spec:
     - https://github.com/kapilkumaria/eks-enterprise-kubernetes-platform.git
     - https://github.com/kubernetes-sigs/gateway-api.git
     - https://kubernetes-sigs.github.io/metrics-server/
+    - https://kubernetes-sigs.github.io/external-dns/
     - https://traefik.github.io/charts
     - quay.io/jetstack/charts
 
