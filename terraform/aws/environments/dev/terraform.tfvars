@@ -19,3 +19,15 @@ cluster_public_access_cidrs = [
 ]
 
 cloudwatch_log_retention_days = 30
+
+# ============================================================
+# ExternalDNS IRSA
+# ============================================================
+
+enable_external_dns_irsa          = true
+external_dns_namespace            = "external-dns"
+external_dns_service_account_name = "external-dns"
+
+external_dns_hosted_zone_ids = [
+  "Z0058793HC1B8WCMOEQ4"
+]

@@ -70,3 +70,32 @@ variable "cloudwatch_log_retention_days" {
   type        = number
   default     = 30
 }
+
+
+# ============================================================
+# ExternalDNS IRSA
+# ============================================================
+
+variable "enable_external_dns_irsa" {
+  description = "Whether to create the ExternalDNS IAM policy and IRSA role."
+  type        = bool
+  default     = false
+}
+
+variable "external_dns_namespace" {
+  description = "Kubernetes namespace containing the ExternalDNS service account."
+  type        = string
+  default     = "external-dns"
+}
+
+variable "external_dns_service_account_name" {
+  description = "Name of the Kubernetes service account used by ExternalDNS."
+  type        = string
+  default     = "external-dns"
+}
+
+variable "external_dns_hosted_zone_ids" {
+  description = "Amazon Route 53 hosted-zone IDs that ExternalDNS may manage."
+  type        = list(string)
+  default     = []
+}

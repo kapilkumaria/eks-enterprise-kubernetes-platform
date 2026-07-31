@@ -426,3 +426,61 @@ variable "addon_resolve_conflicts_on_update" {
     error_message = "addon_resolve_conflicts_on_update must be NONE, OVERWRITE, or PRESERVE."
   }
 }
+
+
+# ============================================================
+# ExternalDNS IRSA
+# ============================================================
+
+variable "enable_external_dns_irsa" {
+  description = "Whether to create the ExternalDNS IAM policy and IRSA role."
+  type        = bool
+  default     = false
+}
+
+variable "external_dns_namespace" {
+  description = "Kubernetes namespace containing the ExternalDNS service account."
+  type        = string
+  default     = "external-dns"
+
+  validation {
+    condition     = length(trimspace(var.external_dns_namespace)) > 0
+    error_message = "external_dns_namespace cannot be empty."
+  }
+}
+
+variable "external_dns_service_account_name" {
+  description = "Name of the Kubernetes service account used by ExternalDNS."
+  type        = string
+  default     = "external-dns"
+
+  validation {
+    condition     = length(trimspace(var.external_dns_service_account_name)) > 0
+    error_message = "external_dns_service_account_name cannot be empty."
+  }
+}
+
+variable "external_dns_hosted_zone_ids" {
+  description = "Amazon Route 53 hosted-zone IDs that ExternalDNS may manage."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition = (
+      !var.enable_external_dns_irsa ||
+      length(var.external_dns_hosted_zone_ids) > 0
+    )
+
+    error_message = "At least one hosted-zone ID must be supplied when enable_external_dns_irsa is true."
+  }
+
+  validation {
+    condition = alltrue([
+      for hosted_zone_id in var.external_dns_hosted_zone_ids :
+      length(trimspace(hosted_zone_id)) > 0 &&
+      !startswith(hosted_zone_id, "/hostedzone/")
+    ])
+
+    error_message = "Hosted-zone IDs must be non-empty and must not include the /hostedzone/ prefix."
+  }
+}

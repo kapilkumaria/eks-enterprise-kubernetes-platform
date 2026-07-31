@@ -44,6 +44,12 @@ module "eks" {
 
   max_unavailable = 1
 
+  # ExternalDNS IRSA
+  enable_external_dns_irsa          = var.enable_external_dns_irsa
+  external_dns_namespace            = var.external_dns_namespace
+  external_dns_service_account_name = var.external_dns_service_account_name
+  external_dns_hosted_zone_ids      = var.external_dns_hosted_zone_ids
+
   node_labels = {
     node-pool = "general"
     lifecycle = "on-demand"

@@ -106,3 +106,23 @@ output "kubectl_update_command" {
   description = "Command used to update the local kubeconfig."
   value       = module.eks.kubectl_update_command
 }
+
+
+# ============================================================
+# ExternalDNS IRSA Outputs
+# ============================================================
+
+output "external_dns_irsa_role_arn" {
+  description = "IAM Role ARN used by the ExternalDNS Kubernetes service account."
+  value       = module.eks.external_dns_irsa_role_arn
+}
+
+output "external_dns_irsa_role_name" {
+  description = "IAM Role name used by the ExternalDNS Kubernetes service account."
+  value       = module.eks.external_dns_irsa_role_name
+}
+
+output "external_dns_policy_arn" {
+  description = "Customer-managed IAM policy ARN used by ExternalDNS."
+  value       = module.eks.external_dns_policy_arn
+}
