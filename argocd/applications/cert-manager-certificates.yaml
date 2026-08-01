@@ -1,0 +1,37 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cert-manager-certificates
+  namespace: argocd
+
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+
+  labels:
+    app.kubernetes.io/name: cert-manager-certificates
+    app.kubernetes.io/part-of: enterprise-kubernetes-platform
+
+spec:
+  project: platform
+
+  source:
+    repoURL: https://github.com/kapilkumaria/eks-enterprise-kubernetes-platform.git
+    targetRevision: main
+    path: platform/cert-manager/certificates
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: traefik
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - PruneLast=true
