@@ -1,0 +1,72 @@
+# ============================================================
+# Kyverno configuration for the development EKS cluster
+# ============================================================
+#
+# This environment runs on two t3.medium worker nodes with a
+# limited pod-density ceiling. Each Kyverno controller therefore
+# runs as one replica.
+#
+# Production environments should use multiple admission
+# controller replicas, topology spreading, and sufficient
+# worker-node capacity.
+
+admissionController:
+  replicas: 1
+
+  autoscaling:
+    enabled: false
+
+  container:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+
+      limits:
+        memory: 384Mi
+
+  initContainer:
+    resources:
+      requests:
+        cpu: 10m
+        memory: 64Mi
+
+      limits:
+        cpu: 100m
+        memory: 256Mi
+
+backgroundController:
+  enabled: true
+  replicas: 1
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 64Mi
+
+    limits:
+      memory: 128Mi
+
+cleanupController:
+  enabled: true
+  replicas: 1
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 64Mi
+
+    limits:
+      memory: 128Mi
+
+reportsController:
+  enabled: true
+  replicas: 1
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 64Mi
+
+    limits:
+      memory: 128Mi

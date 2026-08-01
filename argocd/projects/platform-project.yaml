@@ -17,6 +17,7 @@ spec:
     - https://kubernetes-sigs.github.io/metrics-server/
     - https://kubernetes-sigs.github.io/external-dns/
     - https://charts.external-secrets.io
+    - https://kyverno.github.io/kyverno/
     - https://traefik.github.io/charts
     - quay.io/jetstack/charts
 
