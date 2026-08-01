@@ -97,6 +97,12 @@ spec:
       namespace: traefik
       sectionName: web
 
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: shared-public-gateway
+      namespace: traefik
+      sectionName: websecure
+
   hostnames:
     - whoami-dev.kapilkumaria.com
 
