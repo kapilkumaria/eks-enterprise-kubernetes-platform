@@ -16,6 +16,7 @@ spec:
     - https://github.com/kubernetes-sigs/gateway-api.git
     - https://kubernetes-sigs.github.io/metrics-server/
     - https://kubernetes-sigs.github.io/external-dns/
+    - https://charts.external-secrets.io
     - https://traefik.github.io/charts
     - quay.io/jetstack/charts
 

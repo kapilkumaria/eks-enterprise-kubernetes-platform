@@ -1,0 +1,73 @@
+# ============================================================
+# External Secrets Operator CRDs
+# ============================================================
+
+installCRDs: true
+
+# ============================================================
+# Main controller
+# ============================================================
+
+replicaCount: 2
+
+serviceAccount:
+  create: true
+  automount: true
+  name: external-secrets
+
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::931058976119:role/eks-enterprise-platform-dev-external-secrets-irsa"
+
+# ============================================================
+# Controller resources
+# ============================================================
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+
+  limits:
+    cpu: 300m
+    memory: 256Mi
+
+# ============================================================
+# Webhook
+# ============================================================
+
+webhook:
+  create: true
+  replicaCount: 2
+
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+# ============================================================
+# Certificate controller
+# ============================================================
+
+certController:
+  create: true
+  replicaCount: 2
+
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+# ============================================================
+# Prometheus integration
+# ============================================================
+
+serviceMonitor:
+  enabled: false
