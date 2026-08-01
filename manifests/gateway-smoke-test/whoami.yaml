@@ -4,6 +4,7 @@ metadata:
   name: gateway-demo
   labels:
     purpose: gateway-api-smoke-test
+
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -13,44 +14,59 @@ metadata:
   labels:
     app.kubernetes.io/name: whoami
     app.kubernetes.io/part-of: gateway-smoke-test
+
 spec:
   replicas: 2
+
   selector:
     matchLabels:
       app.kubernetes.io/name: whoami
+
   template:
     metadata:
       labels:
         app.kubernetes.io/name: whoami
         app.kubernetes.io/part-of: gateway-smoke-test
+
     spec:
       containers:
-      - name: whoami
-        image: traefik/whoami:v1.11
-        imagePullPolicy: IfNotPresent
-        ports:
-        - name: http
-          containerPort: 80
-          protocol: TCP
-        readinessProbe:
-          httpGet:
-            path: /
-            port: http
-          initialDelaySeconds: 2
-          periodSeconds: 5
-        livenessProbe:
-          httpGet:
-            path: /
-            port: http
-          initialDelaySeconds: 5
-          periodSeconds: 10
-        resources:
-          requests:
-            cpu: 25m
-            memory: 32Mi
-          limits:
-            cpu: 100m
-            memory: 128Mi
+        - name: whoami
+          image: traefik/whoami:v1.11
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+
+          # Environment variables injected from External Secrets Operator
+          envFrom:
+            - secretRef:
+                name: demo-app-database
+
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 5
+
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+
+            limits:
+              cpu: 100m
+              memory: 128Mi
+
 ---
 apiVersion: v1
 kind: Service
@@ -59,15 +75,19 @@ metadata:
   namespace: gateway-demo
   labels:
     app.kubernetes.io/name: whoami
+
 spec:
   type: ClusterIP
+
   selector:
     app.kubernetes.io/name: whoami
+
   ports:
-  - name: http
-    port: 80
-    targetPort: http
-    protocol: TCP
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
+
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -77,25 +97,30 @@ metadata:
   labels:
     app.kubernetes.io/name: whoami
     app.kubernetes.io/part-of: enterprise-kubernetes-platform
+
 spec:
   parentRefs:
-  - group: gateway.networking.k8s.io
-    kind: Gateway
-    name: shared-public-gateway
-    namespace: traefik
-    sectionName: websecure
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: shared-public-gateway
+      namespace: traefik
+      sectionName: websecure
+
   hostnames:
-  - whoami-dev.kapilkumaria.com
+    - whoami-dev.kapilkumaria.com
+
   rules:
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /
-    backendRefs:
-    - group: ''
-      kind: Service
-      name: whoami
-      port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+
+      backendRefs:
+        - group: ""
+          kind: Service
+          name: whoami
+          port: 80
+
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -106,22 +131,26 @@ metadata:
     app.kubernetes.io/name: whoami-http-redirect
     app.kubernetes.io/component: http-redirect
     app.kubernetes.io/part-of: enterprise-kubernetes-platform
+
 spec:
   parentRefs:
-  - group: gateway.networking.k8s.io
-    kind: Gateway
-    name: shared-public-gateway
-    namespace: traefik
-    sectionName: web
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: shared-public-gateway
+      namespace: traefik
+      sectionName: web
+
   hostnames:
-  - whoami-dev.kapilkumaria.com
+    - whoami-dev.kapilkumaria.com
+
   rules:
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /
-    filters:
-    - type: RequestRedirect
-      requestRedirect:
-        scheme: https
-        statusCode: 301
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+
+      filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: https
+            statusCode: 301
