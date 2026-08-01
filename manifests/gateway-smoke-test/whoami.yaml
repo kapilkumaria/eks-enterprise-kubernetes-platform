@@ -84,13 +84,21 @@ kind: HTTPRoute
 metadata:
   name: whoami
   namespace: gateway-demo
+
   labels:
     app.kubernetes.io/name: whoami
+    app.kubernetes.io/part-of: enterprise-kubernetes-platform
+
 spec:
   parentRefs:
-    - name: shared-public-gateway
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: shared-public-gateway
       namespace: traefik
       sectionName: web
+
+  hostnames:
+    - whoami-dev.kapilkumaria.com
 
   rules:
     - matches:
@@ -99,6 +107,7 @@ spec:
             value: /
 
       backendRefs:
-        - name: whoami
+        - group: ""
+          kind: Service
+          name: whoami
           port: 80
-          weight: 1
