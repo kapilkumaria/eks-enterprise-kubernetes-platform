@@ -36,9 +36,26 @@ gateway:
   listeners:
     web:
       port: 8000
+      hostname: "whoami-dev.kapilkumaria.com"
       protocol: HTTP
+
       namespacePolicy:
         from: All
+
+    websecure:
+      port: 8443
+      hostname: "whoami-dev.kapilkumaria.com"
+      protocol: HTTPS
+
+      namespacePolicy:
+        from: All
+
+      mode: Terminate
+
+      certificateRefs:
+        - group: ""
+          kind: Secret
+          name: whoami-dev-staging-tls
 
 # ============================================================
 # Kubernetes Service
