@@ -50,6 +50,12 @@ module "eks" {
   external_dns_service_account_name = var.external_dns_service_account_name
   external_dns_hosted_zone_ids      = var.external_dns_hosted_zone_ids
 
+  # External Secrets Operator IRSA
+  enable_external_secrets_irsa          = var.enable_external_secrets_irsa
+  external_secrets_namespace            = var.external_secrets_namespace
+  external_secrets_service_account_name = var.external_secrets_service_account_name
+  external_secrets_secret_name_prefixes = var.external_secrets_secret_name_prefixes
+
   node_labels = {
     node-pool = "general"
     lifecycle = "on-demand"

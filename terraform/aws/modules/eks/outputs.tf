@@ -202,3 +202,38 @@ output "external_dns_policy_arn" {
     : null
   )
 }
+
+
+# ============================================================
+# External Secrets Operator IRSA outputs
+# ============================================================
+
+output "external_secrets_irsa_role_arn" {
+  description = "IAM Role ARN used by the External Secrets Operator service account."
+
+  value = (
+    var.enable_external_secrets_irsa
+    ? aws_iam_role.external_secrets[0].arn
+    : null
+  )
+}
+
+output "external_secrets_irsa_role_name" {
+  description = "IAM Role name used by the External Secrets Operator service account."
+
+  value = (
+    var.enable_external_secrets_irsa
+    ? aws_iam_role.external_secrets[0].name
+    : null
+  )
+}
+
+output "external_secrets_policy_arn" {
+  description = "Customer-managed IAM policy ARN used by External Secrets Operator."
+
+  value = (
+    var.enable_external_secrets_irsa
+    ? aws_iam_policy.external_secrets[0].arn
+    : null
+  )
+}

@@ -99,3 +99,32 @@ variable "external_dns_hosted_zone_ids" {
   type        = list(string)
   default     = []
 }
+
+
+# ============================================================
+# External Secrets Operator IRSA
+# ============================================================
+
+variable "enable_external_secrets_irsa" {
+  description = "Whether to create the External Secrets Operator IAM policy and IRSA role."
+  type        = bool
+  default     = false
+}
+
+variable "external_secrets_namespace" {
+  description = "Kubernetes namespace containing the External Secrets Operator service account."
+  type        = string
+  default     = "external-secrets"
+}
+
+variable "external_secrets_service_account_name" {
+  description = "Name of the Kubernetes service account used by External Secrets Operator."
+  type        = string
+  default     = "external-secrets"
+}
+
+variable "external_secrets_secret_name_prefixes" {
+  description = "AWS Secrets Manager name prefixes that External Secrets Operator may read."
+  type        = list(string)
+  default     = []
+}

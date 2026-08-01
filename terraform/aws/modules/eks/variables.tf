@@ -484,3 +484,64 @@ variable "external_dns_hosted_zone_ids" {
     error_message = "Hosted-zone IDs must be non-empty and must not include the /hostedzone/ prefix."
   }
 }
+
+
+# ============================================================
+# External Secrets Operator IRSA
+# ============================================================
+
+variable "enable_external_secrets_irsa" {
+  description = "Whether to create the External Secrets Operator IAM policy and IRSA role."
+  type        = bool
+  default     = false
+}
+
+variable "external_secrets_namespace" {
+  description = "Kubernetes namespace containing the External Secrets Operator service account."
+  type        = string
+  default     = "external-secrets"
+
+  validation {
+    condition     = length(trimspace(var.external_secrets_namespace)) > 0
+    error_message = "external_secrets_namespace cannot be empty."
+  }
+}
+
+variable "external_secrets_service_account_name" {
+  description = "Name of the Kubernetes service account used by External Secrets Operator."
+  type        = string
+  default     = "external-secrets"
+
+  validation {
+    condition = (
+      length(trimspace(var.external_secrets_service_account_name)) > 0
+    )
+
+    error_message = "external_secrets_service_account_name cannot be empty."
+  }
+}
+
+variable "external_secrets_secret_name_prefixes" {
+  description = "AWS Secrets Manager name prefixes that External Secrets Operator may read."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition = (
+      !var.enable_external_secrets_irsa ||
+      length(var.external_secrets_secret_name_prefixes) > 0
+    )
+
+    error_message = "At least one secret-name prefix must be supplied when External Secrets IRSA is enabled."
+  }
+
+  validation {
+    condition = alltrue([
+      for secret_name_prefix in var.external_secrets_secret_name_prefixes :
+      length(trimspace(secret_name_prefix)) > 0 &&
+      !startswith(secret_name_prefix, "arn:")
+    ])
+
+    error_message = "External Secrets values must be non-empty secret-name prefixes, not full ARNs."
+  }
+}

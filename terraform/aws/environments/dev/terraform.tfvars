@@ -31,3 +31,16 @@ external_dns_service_account_name = "external-dns"
 external_dns_hosted_zone_ids = [
   "Z0058793HC1B8WCMOEQ4"
 ]
+
+
+# ============================================================
+# External Secrets Operator IRSA
+# ============================================================
+
+enable_external_secrets_irsa          = true
+external_secrets_namespace            = "external-secrets"
+external_secrets_service_account_name = "external-secrets"
+
+external_secrets_secret_name_prefixes = [
+  "eks-enterprise-platform/dev/"
+]
