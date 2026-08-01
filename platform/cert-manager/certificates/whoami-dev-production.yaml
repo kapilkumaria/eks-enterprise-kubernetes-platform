@@ -1,0 +1,31 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: whoami-dev-production
+  namespace: traefik
+
+  labels:
+    app.kubernetes.io/name: whoami-dev
+    app.kubernetes.io/component: tls-certificate
+    app.kubernetes.io/part-of: enterprise-kubernetes-platform
+    environment: dev
+
+spec:
+  secretName: whoami-dev-production-tls
+
+  dnsNames:
+    - whoami-dev.kapilkumaria.com
+
+  issuerRef:
+    name: letsencrypt-production
+    kind: ClusterIssuer
+    group: cert-manager.io
+
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
+
+  usages:
+    - digital signature
+    - server auth
