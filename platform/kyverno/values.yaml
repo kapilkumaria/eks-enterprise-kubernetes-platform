@@ -70,3 +70,10 @@ reportsController:
 
     limits:
       memory: 128Mi
+
+# The Kyverno resource-migration hook completed successfully during
+# initial installation. Disable repeated execution to prevent the
+# PostSync job from normalizing CRD metadata after every Argo CD sync.
+crds:
+  migration:
+    enabled: false
