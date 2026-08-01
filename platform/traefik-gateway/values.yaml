@@ -55,7 +55,7 @@ gateway:
       certificateRefs:
         - group: ""
           kind: Secret
-          name: whoami-dev-staging-tls
+          name: whoami-dev-production-tls
 
 # ============================================================
 # Kubernetes Service
