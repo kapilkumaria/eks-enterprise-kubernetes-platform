@@ -10,9 +10,9 @@ node_instance_types = ["t3.medium"]
 node_capacity_type  = "ON_DEMAND"
 node_disk_size      = 50
 
-desired_size = 2
-min_size     = 1
-max_size     = 3
+desired_size = 3
+min_size     = 2
+max_size     = 4
 
 cluster_public_access_cidrs = [
   "205.206.76.190/32"
