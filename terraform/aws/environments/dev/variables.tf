@@ -128,3 +128,29 @@ variable "external_secrets_secret_name_prefixes" {
   type        = list(string)
   default     = []
 }
+
+
+# ============================================================
+# Amazon VPC CNI NetworkPolicy
+# ============================================================
+
+variable "enable_vpc_cni_network_policy" {
+  description = "Whether to enable NetworkPolicy enforcement in the Amazon VPC CNI managed add-on."
+  type        = bool
+  default     = false
+}
+
+variable "vpc_cni_network_policy_enforcing_mode" {
+  description = "Amazon VPC CNI NetworkPolicy startup enforcement mode."
+  type        = string
+  default     = "standard"
+
+  validation {
+    condition = contains(
+      ["standard", "strict"],
+      var.vpc_cni_network_policy_enforcing_mode
+    )
+
+    error_message = "vpc_cni_network_policy_enforcing_mode must be standard or strict."
+  }
+}

@@ -66,6 +66,15 @@ module "eks" {
   enable_kube_proxy_addon = true
   enable_ebs_csi_addon    = true
 
+  # Amazon VPC CNI NetworkPolicy
+  enable_vpc_cni_network_policy = (
+    var.enable_vpc_cni_network_policy
+  )
+
+  vpc_cni_network_policy_enforcing_mode = (
+    var.vpc_cni_network_policy_enforcing_mode
+  )
+
   tags = {
     Owner      = "Kapil"
     CostCenter = "Portfolio"

@@ -44,3 +44,11 @@ external_secrets_service_account_name = "external-secrets"
 external_secrets_secret_name_prefixes = [
   "eks-enterprise-platform/dev/"
 ]
+
+
+# ============================================================
+# Amazon VPC CNI NetworkPolicy
+# ============================================================
+
+enable_vpc_cni_network_policy         = true
+vpc_cni_network_policy_enforcing_mode = "standard"

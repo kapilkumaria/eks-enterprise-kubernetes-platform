@@ -545,3 +545,29 @@ variable "external_secrets_secret_name_prefixes" {
     error_message = "External Secrets values must be non-empty secret-name prefixes, not full ARNs."
   }
 }
+
+
+# ============================================================
+# Amazon VPC CNI NetworkPolicy
+# ============================================================
+
+variable "enable_vpc_cni_network_policy" {
+  description = "Whether to enable Kubernetes NetworkPolicy enforcement in the Amazon VPC CNI managed add-on."
+  type        = bool
+  default     = false
+}
+
+variable "vpc_cni_network_policy_enforcing_mode" {
+  description = "Startup enforcement mode used by the Amazon VPC CNI NetworkPolicy agent."
+  type        = string
+  default     = "standard"
+
+  validation {
+    condition = contains(
+      ["standard", "strict"],
+      var.vpc_cni_network_policy_enforcing_mode
+    )
+
+    error_message = "vpc_cni_network_policy_enforcing_mode must be standard or strict."
+  }
+}

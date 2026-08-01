@@ -376,6 +376,18 @@ resource "aws_eks_addon" "vpc_cni" {
 
   service_account_role_arn = aws_iam_role.vpc_cni.arn
 
+  configuration_values = jsonencode({
+    enableNetworkPolicy = tostring(
+      var.enable_vpc_cni_network_policy
+    )
+
+    env = {
+      NETWORK_POLICY_ENFORCING_MODE = (
+        var.vpc_cni_network_policy_enforcing_mode
+      )
+    }
+  })
+
   resolve_conflicts_on_create = var.addon_resolve_conflicts_on_create
   resolve_conflicts_on_update = var.addon_resolve_conflicts_on_update
 
