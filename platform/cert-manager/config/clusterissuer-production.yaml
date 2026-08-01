@@ -21,6 +21,8 @@ spec:
       - http01:
           gatewayHTTPRoute:
             parentRefs:
-              - name: shared-public-gateway
-                namespace: traefik
+              - group: gateway.networking.k8s.io
                 kind: Gateway
+                name: shared-public-gateway
+                namespace: traefik
+
