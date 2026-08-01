@@ -8,7 +8,7 @@ installCRDs: true
 # Main controller
 # ============================================================
 
-replicaCount: 2
+replicaCount: 1
 
 serviceAccount:
   create: true
@@ -37,7 +37,7 @@ resources:
 
 webhook:
   create: true
-  replicaCount: 2
+  replicaCount: 1
 
   resources:
     requests:
@@ -54,7 +54,7 @@ webhook:
 
 certController:
   create: true
-  replicaCount: 2
+  replicaCount: 1
 
   resources:
     requests:
