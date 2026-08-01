@@ -1,0 +1,16 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: gateway-demo
+
+  labels:
+    app.kubernetes.io/name: default-deny-ingress
+    app.kubernetes.io/component: network-security
+    app.kubernetes.io/part-of: enterprise-kubernetes-platform
+
+spec:
+  podSelector: {}
+
+  policyTypes:
+    - Ingress
