@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: traefik-metrics
+  namespace: traefik
+
+  labels:
+    app.kubernetes.io/name: traefik
+    app.kubernetes.io/component: metrics
+    app.kubernetes.io/part-of: enterprise-kubernetes-platform
+    monitoring.kapilkumaria.com/enabled: "true"
+
+spec:
+  type: ClusterIP
+
+  selector:
+    app.kubernetes.io/name: traefik
+    app.kubernetes.io/instance: traefik-traefik
+
+  ports:
+    - name: metrics
+      port: 9100
+      targetPort: metrics
+      protocol: TCP

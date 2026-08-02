@@ -1,0 +1,26 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: traefik
+  namespace: monitoring
+
+  labels:
+    app.kubernetes.io/name: traefik
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: enterprise-kubernetes-platform
+
+spec:
+  namespaceSelector:
+    matchNames:
+      - traefik
+
+  selector:
+    matchLabels:
+      monitoring.kapilkumaria.com/enabled: "true"
+
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+      scheme: http
