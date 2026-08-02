@@ -1,0 +1,39 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-resource-requests-limits
+  labels:
+    app.kubernetes.io/name: require-resource-requests-limits
+    app.kubernetes.io/component: policy
+    app.kubernetes.io/part-of: enterprise-kubernetes-platform
+spec:
+  validationFailureAction: Audit
+  background: true
+
+  rules:
+    - name: validate-container-resources
+
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - gateway-demo
+
+      validate:
+        allowExistingViolations: true
+
+        message: >-
+          Every container must define CPU and memory requests and limits.
+
+        pattern:
+          spec:
+            containers:
+              - resources:
+                  requests:
+                    cpu: "?*"
+                    memory: "?*"
+                  limits:
+                    cpu: "?*"
+                    memory: "?*"
