@@ -1,0 +1,316 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: enterprise-platform-alerts
+  namespace: monitoring
+
+  labels:
+    app.kubernetes.io/name: enterprise-platform-alerts
+    app.kubernetes.io/component: alerting
+    app.kubernetes.io/part-of: enterprise-kubernetes-platform
+
+spec:
+  groups:
+    # ==========================================================
+    # Prometheus target health
+    # ==========================================================
+    - name: enterprise-platform.target-health
+      interval: 30s
+
+      rules:
+        - alert: PlatformMonitoringTargetDown
+          expr: |
+            up{
+              namespace=~"traefik|kyverno"
+            } == 0
+          for: 5m
+
+          labels:
+            severity: critical
+            team: platform
+
+          annotations:
+            summary: "Platform monitoring target is unavailable"
+            description: >-
+              Prometheus has been unable to scrape job {{ $labels.job }}
+              in namespace {{ $labels.namespace }} for more than five
+              minutes.
+
+        - alert: TraefikMetricsTargetsMissing
+          expr: |
+            count(
+              up{
+                namespace="traefik",
+                job="traefik-metrics"
+              } == 1
+            ) < 2
+          for: 5m
+
+          labels:
+            severity: warning
+            team: platform
+
+          annotations:
+            summary: "Expected Traefik metrics targets are missing"
+            description: >-
+              Prometheus has fewer than two healthy Traefik metrics
+              targets. Verify the Traefik replicas, metrics Service,
+              ServiceMonitor, and network connectivity.
+
+        - alert: KyvernoMetricsTargetsMissing
+          expr: |
+            count(
+              up{
+                namespace="kyverno"
+              } == 1
+            ) < 4
+          for: 5m
+
+          labels:
+            severity: warning
+            team: platform
+
+          annotations:
+            summary: "Expected Kyverno metrics targets are missing"
+            description: >-
+              Prometheus has fewer than four healthy Kyverno controller
+              metrics targets. Verify the Kyverno deployments, services,
+              and ServiceMonitor configuration.
+
+    # ==========================================================
+    # Kubernetes node capacity
+    # ==========================================================
+    - name: enterprise-platform.node-capacity
+      interval: 30s
+
+      rules:
+        - alert: KubernetesNodeHighCPUUsage
+          expr: |
+            (
+              1 -
+              avg by (instance) (
+                rate(
+                  node_cpu_seconds_total{
+                    mode="idle"
+                  }[5m]
+                )
+              )
+            ) * 100 > 85
+          for: 10m
+
+          labels:
+            severity: warning
+            team: platform
+
+          annotations:
+            summary: "Kubernetes node CPU usage is high"
+            description: >-
+              Node exporter instance {{ $labels.instance }} has exceeded
+              85 percent CPU utilization for ten minutes.
+
+        - alert: KubernetesNodeHighMemoryUsage
+          expr: |
+            (
+              1 -
+              (
+                node_memory_MemAvailable_bytes
+                /
+                node_memory_MemTotal_bytes
+              )
+            ) * 100 > 85
+          for: 10m
+
+          labels:
+            severity: warning
+            team: platform
+
+          annotations:
+            summary: "Kubernetes node memory usage is high"
+            description: >-
+              Node exporter instance {{ $labels.instance }} has exceeded
+              85 percent memory utilization for ten minutes.
+
+        - alert: KubernetesNodeFilesystemNearlyFull
+          expr: |
+            (
+              node_filesystem_avail_bytes{
+                fstype!~"tmpfs|overlay|squashfs"
+              }
+              /
+              node_filesystem_size_bytes{
+                fstype!~"tmpfs|overlay|squashfs"
+              }
+            ) * 100 < 15
+          for: 15m
+
+          labels:
+            severity: warning
+            team: platform
+
+          annotations:
+            summary: "Kubernetes node filesystem is nearly full"
+            description: >-
+              Filesystem {{ $labels.mountpoint }} on
+              {{ $labels.instance }} has less than 15 percent free space.
+
+    # ==========================================================
+    # Persistent storage
+    # ==========================================================
+    - name: enterprise-platform.storage
+      interval: 30s
+
+      rules:
+        - alert: KubernetesPersistentVolumeNearlyFull
+          expr: |
+            (
+              kubelet_volume_stats_used_bytes
+              /
+              kubelet_volume_stats_capacity_bytes
+            ) * 100 > 85
+          for: 10m
+
+          labels:
+            severity: warning
+            team: platform
+
+          annotations:
+            summary: "Kubernetes persistent volume is nearly full"
+            description: >-
+              PVC {{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }}
+              has exceeded 85 percent utilization for ten minutes.
+
+        - alert: KubernetesPersistentVolumeCritical
+          expr: |
+            (
+              kubelet_volume_stats_used_bytes
+              /
+              kubelet_volume_stats_capacity_bytes
+            ) * 100 > 95
+          for: 5m
+
+          labels:
+            severity: critical
+            team: platform
+
+          annotations:
+            summary: "Kubernetes persistent volume is critically full"
+            description: >-
+              PVC {{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }}
+              has exceeded 95 percent utilization for five minutes.
+
+    # ==========================================================
+    # Traefik ingress traffic
+    # ==========================================================
+    - name: enterprise-platform.traefik
+      interval: 30s
+
+      rules:
+        - alert: TraefikHighServerErrorRate
+          expr: |
+            (
+              (
+                sum(
+                  rate(
+                    traefik_entrypoint_requests_total{
+                      code=~"5.."
+                    }[5m]
+                  )
+                )
+                or
+                vector(0)
+              )
+              /
+              clamp_min(
+                sum(
+                  rate(
+                    traefik_entrypoint_requests_total[5m]
+                  )
+                ),
+                0.001
+              )
+            ) > 0.05
+          for: 5m
+
+          labels:
+            severity: critical
+            team: platform
+
+          annotations:
+            summary: "Traefik HTTP 5xx error rate is elevated"
+            description: >-
+              More than five percent of requests handled by Traefik
+              have returned HTTP 5xx responses for five minutes.
+
+        - alert: TraefikHighRequestLatency
+          expr: |
+            histogram_quantile(
+              0.95,
+              sum by (le) (
+                rate(
+                  traefik_entrypoint_request_duration_seconds_bucket[5m]
+                )
+              )
+            ) > 1
+          for: 10m
+
+          labels:
+            severity: warning
+            team: platform
+
+          annotations:
+            summary: "Traefik request latency is elevated"
+            description: >-
+              Traefik 95th-percentile request latency has exceeded one
+              second for ten minutes.
+
+    # ==========================================================
+    # Kyverno policy engine
+    # ==========================================================
+    - name: enterprise-platform.kyverno
+      interval: 30s
+
+      rules:
+        - alert: KyvernoPolicyFailuresDetected
+          expr: |
+            sum(
+              increase(
+                kyverno_policy_results_total{
+                  rule_result="fail"
+                }[10m]
+              )
+            ) > 0
+          for: 1m
+
+          labels:
+            severity: warning
+            team: platform
+            component: kyverno
+
+          annotations:
+            summary: "Kyverno policy failures detected"
+            description: >-
+              Kyverno has recorded one or more failed policy evaluations
+              during the last ten minutes.
+
+        - alert: KyvernoAdmissionLatencyHigh
+          expr: |
+            histogram_quantile(
+              0.95,
+              sum by (le) (
+                rate(
+                  kyverno_admission_review_duration_seconds_bucket[5m]
+                )
+              )
+            ) > 1
+          for: 10m
+
+          labels:
+            severity: warning
+            team: platform
+            component: kyverno
+
+          annotations:
+            summary: "Kyverno admission latency is elevated"
+            description: >-
+              Kyverno 95th-percentile admission review latency has
+              exceeded one second for ten minutes.
