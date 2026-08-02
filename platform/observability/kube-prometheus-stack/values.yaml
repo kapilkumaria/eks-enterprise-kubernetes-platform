@@ -1,0 +1,300 @@
+# ============================================================
+# kube-prometheus-stack configuration
+# Development EKS cluster
+# ============================================================
+#
+# Components:
+# - Prometheus Operator
+# - Prometheus
+# - Alertmanager
+# - Grafana
+# - kube-state-metrics
+# - node-exporter
+#
+# This development configuration uses single replicas and
+# conservative resource requests for the t3.medium node group.
+# Production should use multiple replicas, pod disruption
+# budgets, topology spreading, and longer retention.
+
+# ============================================================
+# Alertmanager
+# ============================================================
+
+alertmanager:
+  enabled: true
+
+  alertmanagerSpec:
+    replicas: 1
+
+    retention: 120h
+
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+
+          accessModes:
+            - ReadWriteOnce
+
+          resources:
+            requests:
+              storage: 2Gi
+
+# ============================================================
+# Grafana
+# ============================================================
+
+grafana:
+  enabled: true
+
+  replicas: 1
+
+  defaultDashboardsEnabled: true
+  defaultDashboardsTimezone: browser
+
+  adminPassword: ""
+
+  persistence:
+    enabled: true
+    storageClassName: gp3
+
+    accessModes:
+      - ReadWriteOnce
+
+    size: 5Gi
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+    limits:
+      cpu: 300m
+      memory: 384Mi
+
+  service:
+    type: ClusterIP
+
+  sidecar:
+    dashboards:
+      enabled: true
+      searchNamespace: ALL
+
+    datasources:
+      enabled: true
+      searchNamespace: ALL
+
+# ============================================================
+# Prometheus Operator
+# ============================================================
+
+prometheusOperator:
+  enabled: true
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+    limits:
+      cpu: 300m
+      memory: 384Mi
+
+  admissionWebhooks:
+    enabled: true
+
+    patch:
+      enabled: true
+
+      resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+
+        limits:
+          cpu: 100m
+          memory: 128Mi
+
+  prometheusConfigReloader:
+    resources:
+      requests:
+        cpu: 20m
+        memory: 32Mi
+
+      limits:
+        cpu: 100m
+        memory: 128Mi
+
+# ============================================================
+# Prometheus
+# ============================================================
+
+prometheus:
+  enabled: true
+
+  prometheusSpec:
+    replicas: 1
+
+    retention: 7d
+    retentionSize: 8GB
+
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+
+      limits:
+        cpu: 750m
+        memory: 1Gi
+
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+
+          accessModes:
+            - ReadWriteOnce
+
+          resources:
+            requests:
+              storage: 10Gi
+
+    # Discover ServiceMonitor objects across all namespaces.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorSelector: {}
+    serviceMonitorNamespaceSelector: {}
+
+    # Discover PodMonitor objects across all namespaces.
+    podMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelector: {}
+    podMonitorNamespaceSelector: {}
+
+    # Discover PrometheusRule objects across all namespaces.
+    ruleSelectorNilUsesHelmValues: false
+    ruleSelector: {}
+    ruleNamespaceSelector: {}
+
+    # Discover Probe objects across all namespaces.
+    probeSelectorNilUsesHelmValues: false
+    probeSelector: {}
+    probeNamespaceSelector: {}
+
+    enableAdminAPI: false
+
+    walCompression: true
+
+# ============================================================
+# kube-state-metrics
+# ============================================================
+
+kube-state-metrics:
+  enabled: true
+
+  replicas: 1
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 96Mi
+
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# ============================================================
+# Prometheus node exporter
+# ============================================================
+
+nodeExporter:
+  enabled: true
+
+prometheus-node-exporter:
+  resources:
+    requests:
+      cpu: 30m
+      memory: 32Mi
+
+    limits:
+      cpu: 150m
+      memory: 128Mi
+
+# ============================================================
+# Kubernetes component monitoring
+# ============================================================
+
+kubeApiServer:
+  enabled: true
+
+kubelet:
+  enabled: true
+
+kubeControllerManager:
+  # EKS does not expose the managed controller-manager endpoint
+  # directly to customer workloads.
+  enabled: false
+
+kubeScheduler:
+  # EKS does not expose the managed scheduler endpoint directly.
+  enabled: false
+
+kubeEtcd:
+  # The EKS etcd control plane is AWS-managed and inaccessible.
+  enabled: false
+
+kubeProxy:
+  enabled: true
+
+coreDns:
+  enabled: true
+
+kubeDns:
+  enabled: false
+
+# ============================================================
+# Default alerting rules
+# ============================================================
+
+defaultRules:
+  create: true
+
+  rules:
+    alertmanager: true
+    configReloaders: true
+    etcd: false
+    general: true
+    k8sContainerCpuUsageSecondsTotal: true
+    k8sContainerMemoryCache: true
+    k8sContainerMemoryRss: true
+    k8sContainerMemorySwap: true
+    k8sContainerResource: true
+    k8sPodOwner: true
+    kubeApiserverAvailability: true
+    kubeApiserverBurnrate: true
+    kubeApiserverHistogram: true
+    kubeApiserverSlos: true
+    kubeControllerManager: false
+    kubePrometheusGeneral: true
+    kubePrometheusNodeRecording: true
+    kubeSchedulerAlerting: false
+    kubeSchedulerRecording: false
+    kubeStateMetrics: true
+    kubelet: true
+    kubernetesApps: true
+    kubernetesResources: true
+    kubernetesStorage: true
+    kubernetesSystem: true
+    network: true
+    node: true
+    nodeExporterAlerting: true
+    nodeExporterRecording: true
+    prometheus: true
+    prometheusOperator: true
