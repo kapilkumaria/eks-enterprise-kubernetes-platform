@@ -10,7 +10,7 @@ node_instance_types = ["t3.medium"]
 node_capacity_type  = "ON_DEMAND"
 node_disk_size      = 50
 
-desired_size = 3
+desired_size = 4
 min_size     = 2
 max_size     = 4
 
