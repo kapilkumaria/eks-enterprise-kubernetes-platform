@@ -56,6 +56,12 @@ alertmanager:
 grafana:
   enabled: true
 
+  # Grafana uses a single ReadWriteOnce EBS volume.
+  # Recreate prevents two pods on different nodes from attempting
+  # to mount the same volume during an update.
+  deploymentStrategy:
+    type: Recreate
+
   replicas: 1
 
   defaultDashboardsEnabled: true
