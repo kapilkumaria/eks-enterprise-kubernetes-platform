@@ -3,7 +3,8 @@ kind: Namespace
 metadata:
   name: gateway-demo
   labels:
-    purpose: gateway-api-smoke-test
+    app.kubernetes.io/name: gateway-demo
+    app.kubernetes.io/part-of: enterprise-kubernetes-platform
 
 ---
 apiVersion: apps/v1
@@ -39,10 +40,19 @@ spec:
               containerPort: 80
               protocol: TCP
 
-          # Environment variables injected from External Secrets Operator
+          # Values are supplied by External Secrets Operator.
           envFrom:
             - secretRef:
                 name: demo-app-database
+
+          # Explicit container security configuration.
+          # This satisfies the Kyverno privileged-container policy.
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
 
           readinessProbe:
             httpGet:
@@ -50,6 +60,8 @@ spec:
               port: http
             initialDelaySeconds: 2
             periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
 
           livenessProbe:
             httpGet:
@@ -57,12 +69,13 @@ spec:
               port: http
             initialDelaySeconds: 5
             periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
 
           resources:
             requests:
               cpu: 25m
               memory: 32Mi
-
             limits:
               cpu: 100m
               memory: 128Mi
@@ -75,6 +88,7 @@ metadata:
   namespace: gateway-demo
   labels:
     app.kubernetes.io/name: whoami
+    app.kubernetes.io/part-of: gateway-smoke-test
 
 spec:
   type: ClusterIP
