@@ -22,6 +22,7 @@ spec:
     - https://traefik.github.io/charts
     - quay.io/jetstack/charts
 
+    - https://kedacore.github.io/charts
   destinations:
     - server: https://kubernetes.default.svc
       namespace: '*'
