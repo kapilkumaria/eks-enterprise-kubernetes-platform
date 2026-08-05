@@ -146,3 +146,33 @@ output "external_secrets_policy_arn" {
   description = "Customer-managed IAM policy ARN used by External Secrets Operator."
   value       = module.eks.external_secrets_policy_arn
 }
+
+
+# ============================================================
+# Karpenter outputs
+# ============================================================
+
+output "karpenter_controller_role_arn" {
+  description = "IAM role ARN used by the Karpenter controller."
+  value       = module.karpenter.controller_role_arn
+}
+
+output "karpenter_node_role_arn" {
+  description = "IAM role ARN used by Karpenter-created EC2 nodes."
+  value       = module.karpenter.node_role_arn
+}
+
+output "karpenter_node_role_name" {
+  description = "IAM role name used by Karpenter-created EC2 nodes."
+  value       = module.karpenter.node_role_name
+}
+
+output "karpenter_interruption_queue_name" {
+  description = "SQS queue consumed by the Karpenter controller."
+  value       = module.karpenter.interruption_queue_name
+}
+
+output "karpenter_discovery_tag" {
+  description = "Tag used to discover Karpenter subnets and security groups."
+  value       = module.karpenter.discovery_tag
+}

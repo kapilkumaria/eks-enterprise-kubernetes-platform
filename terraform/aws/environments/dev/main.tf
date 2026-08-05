@@ -80,3 +80,32 @@ module "eks" {
     CostCenter = "Portfolio"
   }
 }
+
+
+# ============================================================
+# Karpenter node autoscaling
+# ============================================================
+
+module "karpenter" {
+  source = "../../modules/karpenter"
+
+  cluster_name = module.eks.cluster_name
+  cluster_arn  = module.eks.cluster_arn
+
+  oidc_provider_arn = module.eks.oidc_provider_arn
+  oidc_provider_url = module.eks.oidc_provider_url
+
+  cluster_security_group_id = (
+    module.eks.cluster_security_group_id
+  )
+
+  private_subnet_ids = module.networking.private_subnet_ids
+
+  karpenter_namespace            = "karpenter"
+  karpenter_service_account_name = "karpenter"
+
+  enable_interruption_handling = true
+  interruption_queue_name      = module.eks.cluster_name
+
+  tags = local.common_tags
+}
