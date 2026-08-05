@@ -1,14 +1,18 @@
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
+
 metadata:
   name: whoami-prometheus
   namespace: gateway-demo
 
+  annotations:
+    scaledobject.keda.sh/transfer-hpa-ownership: "true"
+
   labels:
     app.kubernetes.io/name: whoami
-    app.kubernetes.io/component: autoscaling
+    app.kubernetes.io/component: event-driven-autoscaling
     app.kubernetes.io/part-of: enterprise-kubernetes-platform
-    autoscaling.kapilkumaria.com/type: keda-prometheus
+    environment: dev
 
 spec:
   scaleTargetRef:
@@ -17,7 +21,7 @@ spec:
     name: whoami
 
   pollingInterval: 15
-  cooldownPeriod: 120
+  cooldownPeriod: 300
   initialCooldownPeriod: 30
 
   minReplicaCount: 2
@@ -31,12 +35,13 @@ spec:
     restoreToOriginalReplicaCount: false
 
     horizontalPodAutoscalerConfig:
-      name: keda-hpa-whoami-prometheus
+      name: whoami
 
       behavior:
         scaleUp:
           stabilizationWindowSeconds: 0
           selectPolicy: Max
+
           policies:
             - type: Pods
               value: 2
@@ -49,6 +54,7 @@ spec:
         scaleDown:
           stabilizationWindowSeconds: 300
           selectPolicy: Max
+
           policies:
             - type: Percent
               value: 50
@@ -58,21 +64,21 @@ spec:
     - type: prometheus
 
       metadata:
-        serverAddress: http://observability-kube-prometh-prometheus.monitoring.svc.cluster.local:9090
+        serverAddress: >-
+          http://observability-kube-prometh-prometheus.monitoring.svc.cluster.local:9090
 
         metricName: whoami_traefik_requests_per_second
 
-        query: |
+        query: >-
           sum(
             rate(
               traefik_service_requests_total{
-                service=~".*whoami.*"
+                exported_service=~".*gateway-demo-whoami.*",
+                method="GET"
               }[2m]
             )
           )
 
         threshold: "5"
-
         activationThreshold: "0.5"
-
         ignoreNullValues: "false"
