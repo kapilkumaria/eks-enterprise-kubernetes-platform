@@ -1,0 +1,40 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hpa
+  namespace: argocd
+
+  annotations:
+    argocd.argoproj.io/sync-wave: "25"
+
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+
+  labels:
+    app.kubernetes.io/name: hpa
+    app.kubernetes.io/component: autoscaling
+    app.kubernetes.io/part-of: enterprise-kubernetes-platform
+
+spec:
+  project: platform
+
+  source:
+    repoURL: https://github.com/kapilkumaria/eks-enterprise-kubernetes-platform.git
+    targetRevision: main
+    path: platform/autoscaling/hpa
+
+    directory:
+      recurse: true
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: gateway-demo
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
