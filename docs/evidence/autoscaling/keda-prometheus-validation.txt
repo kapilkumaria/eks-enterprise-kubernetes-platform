@@ -1,0 +1,173 @@
+===== DATE =====
+Wed Aug  5 03:05:50 PM MDT 2026
+
+===== KEDA SCALEDOBJECT =====
+NAME                SCALETARGETKIND      SCALETARGETNAME   MIN   MAX   READY   ACTIVE   FALLBACK   PAUSED   TRIGGERS     AUTHENTICATIONS   AGE
+whoami-prometheus   apps/v1.Deployment   whoami            2     6     True    False    False      False    prometheus                     14m
+
+===== KEDA STATUS =====
+{
+  "conditions": [
+    {
+      "message": "ScaledObject is defined correctly and is ready for scaling",
+      "reason": "ScaledObjectReady",
+      "status": "True",
+      "type": "Ready"
+    },
+    {
+      "message": "Scaling is not performed because triggers are not active",
+      "reason": "ScalerNotActive",
+      "status": "False",
+      "type": "Active"
+    },
+    {
+      "message": "No fallbacks are active on this scaled object",
+      "reason": "NoFallbackFound",
+      "status": "False",
+      "type": "Fallback"
+    },
+    {
+      "status": "False",
+      "type": "Paused"
+    },
+    {
+      "message": "HPA is actively scaling",
+      "reason": "HPAActive",
+      "status": "True",
+      "type": "HPAActive"
+    }
+  ],
+  "health": {
+    "s0-prometheus": {
+      "numberOfFailures": 0,
+      "status": "Happy"
+    }
+  },
+  "hpaName": "whoami",
+  "externalMetricNames": [
+    "s0-prometheus"
+  ],
+  "lastActiveTime": "2026-08-05T21:02:16Z"
+}
+
+===== KEDA-MANAGED HPA =====
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  annotations:
+    argocd.argoproj.io/tracking-id: keda-scaledobjects:keda.sh/ScaledObject:gateway-demo/whoami-prometheus
+    scaledobject.keda.sh/transfer-hpa-ownership: "true"
+  creationTimestamp: "2026-08-05T20:51:46Z"
+  labels:
+    app.kubernetes.io/component: event-driven-autoscaling
+    app.kubernetes.io/managed-by: keda-operator
+    app.kubernetes.io/name: whoami
+    app.kubernetes.io/part-of: enterprise-kubernetes-platform
+    app.kubernetes.io/version: 2.20.2
+    environment: dev
+    scaledobject.keda.sh/name: whoami-prometheus
+  name: whoami
+  namespace: gateway-demo
+  ownerReferences:
+  - apiVersion: keda.sh/v1alpha1
+    blockOwnerDeletion: true
+    controller: true
+    kind: ScaledObject
+    name: whoami-prometheus
+    uid: 2cadccc2-fafb-4008-a7ef-4324c063d8c6
+  resourceVersion: "48242"
+  uid: f9208b27-f812-4f0f-8d3d-f3805b53869a
+spec:
+  behavior:
+    scaleDown:
+      policies:
+      - periodSeconds: 60
+        type: Percent
+        value: 50
+      selectPolicy: Max
+      stabilizationWindowSeconds: 300
+    scaleUp:
+      policies:
+      - periodSeconds: 60
+        type: Pods
+        value: 2
+      - periodSeconds: 60
+        type: Percent
+        value: 100
+      selectPolicy: Max
+      stabilizationWindowSeconds: 0
+  maxReplicas: 6
+  metrics:
+  - external:
+      metric:
+        name: s0-prometheus
+        selector:
+          matchLabels:
+            scaledobject.keda.sh/name: whoami-prometheus
+      target:
+        averageValue: "5"
+        type: AverageValue
+    type: External
+  minReplicas: 2
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: whoami
+status:
+  conditions:
+  - lastTransitionTime: "2026-08-05T20:51:54Z"
+    message: recent recommendations were higher than current one, applying the highest
+      recent recommendation
+    reason: ScaleDownStabilized
+    status: "True"
+    type: AbleToScale
+  - lastTransitionTime: "2026-08-05T20:51:54Z"
+    message: 'the HPA was able to successfully calculate a replica count from external
+      metric s0-prometheus(&LabelSelector{MatchLabels:map[string]string{scaledobject.keda.sh/name:
+      whoami-prometheus,},MatchExpressions:[]LabelSelectorRequirement{},})'
+    reason: ValidMetricFound
+    status: "True"
+    type: ScalingActive
+  - lastTransitionTime: "2026-08-05T21:02:11Z"
+    message: the desired count is within the acceptable range
+    reason: DesiredWithinRange
+    status: "False"
+    type: ScalingLimited
+  currentMetrics:
+  - external:
+      current:
+        averageValue: 6m
+      metric:
+        name: s0-prometheus
+        selector:
+          matchLabels:
+            scaledobject.keda.sh/name: whoami-prometheus
+    type: External
+  currentReplicas: 2
+  desiredReplicas: 2
+  lastScaleTime: "2026-08-05T21:01:11Z"
+
+===== AUTOSCALING EVENTS =====
+14m         Normal   KEDAScalerInfo       scaledobject/whoami-prometheus   PollingInterval is configured but is not relevant. PollingInterval is only relevant when minReplicaCount = 0 or idleReplicaCount = 0 or useCachedMetrics is enabled
+16m         Normal   KEDAScalerInfo       scaledobject/whoami-prometheus   PollingInterval is configured but is not relevant. PollingInterval is only relevant when minReplicaCount = 0 or idleReplicaCount = 0 or useCachedMetrics is enabled
+14m         Normal   KEDAScalersStarted   scaledobject/whoami-prometheus   Scaler prometheus is built
+14m         Normal   KEDAScalerInfo       scaledobject/whoami-prometheus   PollingInterval is configured but is not relevant. PollingInterval is only relevant when minReplicaCount = 0 or idleReplicaCount = 0 or useCachedMetrics is enabled
+14m         Normal   KEDAScalerInfo       scaledobject/whoami-prometheus   CooldownPeriod is configured but is not relevant. CooldownPeriod is only relevant when minReplicaCount = 0 or idleReplicaCount = 0
+14m         Normal   KEDAScalerInfo       scaledobject/whoami-prometheus   PollingInterval is configured but is not relevant. PollingInterval is only relevant when minReplicaCount = 0 or idleReplicaCount = 0 or useCachedMetrics is enabled
+14m         Normal   ScaledObjectReady    scaledobject/whoami-prometheus   ScaledObject is ready for scaling
+14m         Normal   KEDAScalersStarted   scaledobject/whoami-prometheus   Started scalers watch
+14m         Normal   KEDAScalersStarted   scaledobject/whoami-prometheus   Scaler prometheus is built
+14m         Normal   KEDAScalerInfo       scaledobject/whoami-prometheus   PollingInterval is configured but is not relevant. PollingInterval is only relevant when minReplicaCount = 0 or idleReplicaCount = 0 or useCachedMetrics is enabled
+22m         Normal   SuccessfulRescale    horizontalpodautoscaler/whoami   New size: 4; reason: cpu resource utilization (percentage of request) above target
+4m38s       Normal   ScalingReplicaSet    deployment/whoami                Scaled down replica set whoami-d9c48d497 from 4 to 2
+4m38s       Normal   SuccessfulRescale    horizontalpodautoscaler/whoami   New size: 4; reason: external metric s0-prometheus(&LabelSelector{MatchLabels:map[string]string{scaledobject.keda.sh/name: whoami-prometheus,},MatchExpressions:[]LabelSelectorRequirement{},}) above target
+4m38s       Normal   ScalingReplicaSet    deployment/whoami                Scaled up replica set whoami-d9c48d497 from 2 to 4
+
+===== DEPLOYMENT =====
+NAME     READY   UP-TO-DATE   AVAILABLE   AGE
+whoami   2/2     2            2           88m
+
+===== PODS =====
+NAME                     READY   STATUS    RESTARTS   AGE   IP             NODE                           NOMINATED NODE   READINESS GATES
+whoami-d9c48d497-sdjc4   1/1     Running   0          88m   10.30.12.119   ip-10-30-12-233.ec2.internal   <none>           <none>
+whoami-d9c48d497-xgrbx   1/1     Running   0          88m   10.30.11.196   ip-10-30-11-175.ec2.internal   <none>           <none>
