@@ -1,0 +1,22 @@
+serviceAccount:
+  create: true
+  name: karpenter
+
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::931058976119:role/eks-enterprise-platform-dev-karpenter-controller-irsa"
+
+settings:
+  clusterName: "eks-enterprise-platform-dev"
+  interruptionQueue: "eks-enterprise-platform-dev"
+
+replicas: 2
+
+controller:
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+    limits:
+      cpu: "1"
+      memory: 1Gi

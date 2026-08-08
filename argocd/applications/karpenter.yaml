@@ -1,0 +1,43 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: karpenter
+  namespace: argocd
+
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+
+  labels:
+    app.kubernetes.io/name: karpenter
+    app.kubernetes.io/component: node-autoscaling
+    app.kubernetes.io/part-of: enterprise-kubernetes-platform
+
+spec:
+  project: platform
+
+  sources:
+    - repoURL: public.ecr.aws/karpenter
+      chart: karpenter
+      targetRevision: "1.11.3"
+
+      helm:
+        releaseName: karpenter
+
+        valueFiles:
+          - $values/platform/karpenter/controller/values.yaml
+
+    - repoURL: https://github.com/kapilkumaria/eks-enterprise-kubernetes-platform.git
+      targetRevision: main
+      ref: values
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: karpenter
+
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

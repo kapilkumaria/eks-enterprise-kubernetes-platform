@@ -12,6 +12,7 @@ spec:
   description: Enterprise Kubernetes platform services
 
   sourceRepos:
+  - public.ecr.aws/karpenter
     - https://prometheus-community.github.io/helm-charts
     - https://github.com/kapilkumaria/eks-enterprise-kubernetes-platform.git
     - https://github.com/kubernetes-sigs/gateway-api.git

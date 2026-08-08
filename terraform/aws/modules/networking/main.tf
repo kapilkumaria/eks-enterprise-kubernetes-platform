@@ -59,6 +59,7 @@ resource "aws_subnet" "private" {
   tags = merge(local.common_tags, {
     Name                              = "${local.name_prefix}-private-${count.index + 1}"
     "kubernetes.io/role/internal-elb" = "1"
+    "karpenter.sh/discovery"          = "${var.project_name}-${var.environment}"
   })
 }
 

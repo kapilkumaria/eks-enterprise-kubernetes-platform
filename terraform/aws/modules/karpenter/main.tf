@@ -204,24 +204,33 @@ resource "aws_eks_access_entry" "karpenter_nodes" {
 
 
 # ============================================================
-# Karpenter subnet discovery tags
+# Karpenter security-group discovery tag
 # ============================================================
 
-resource "aws_ec2_tag" "private_subnet_discovery" {
-  for_each = toset(var.private_subnet_ids)
-
-  resource_id = each.value
+resource "aws_ec2_tag" "cluster_security_group_discovery" {
+  resource_id = var.cluster_security_group_id
   key         = "karpenter.sh/discovery"
   value       = var.cluster_name
 }
 
 
 # ============================================================
-# Karpenter security-group discovery tag
+# Karpenter private-subnet discovery tags
+#
+# count is intentionally used instead of:
+#
+# for_each = toset(var.private_subnet_ids)
+#
+# During a fresh infrastructure deployment, subnet IDs are
+# unknown until the networking module creates the subnets.
+# Terraform can know the list length, but cannot use unknown
+# subnet IDs as for_each instance keys during the initial plan.
 # ============================================================
 
-resource "aws_ec2_tag" "cluster_security_group_discovery" {
-  resource_id = var.cluster_security_group_id
+resource "aws_ec2_tag" "private_subnet_discovery" {
+  count = length(var.private_subnet_ids)
+
+  resource_id = var.private_subnet_ids[count.index]
   key         = "karpenter.sh/discovery"
   value       = var.cluster_name
 }
@@ -794,6 +803,18 @@ data "aws_iam_policy_document" "controller_iam_integration" {
         "*"
       ]
     }
+  }
+
+
+  statement {
+    sid    = "AllowUnscopedInstanceProfileListAction"
+    effect = "Allow"
+
+    actions = [
+      "iam:ListInstanceProfiles"
+    ]
+
+    resources = ["*"]
   }
 
   statement {
