@@ -80,78 +80,133 @@ This project addresses those problems through a declarative platform architectur
 
 # 3. High-Level Architecture
 
-The platform follows this conceptual architecture:
+The platform combines Terraform-provisioned AWS infrastructure with GitOps-managed Kubernetes services on Amazon EKS.
+
+The following diagram presents the end-to-end platform architecture, including infrastructure provisioning, GitOps reconciliation, traffic management, security controls, observability, workload autoscaling, dynamic node provisioning, persistent storage, and AWS service integrations.
+
+![Enterprise Kubernetes Platform Architecture](diagrams/enterprise-kubernetes-platform-architecture.png)
+
+## Architecture at a Glance
+
+The platform is organized into several integrated engineering layers:
+
+- **Infrastructure as Code** — Terraform provisions AWS networking, Amazon EKS, IAM, OIDC/IRSA, managed node capacity, and supporting infrastructure.
+- **GitOps** — Argo CD continuously reconciles Kubernetes desired state from Git using the App-of-Apps pattern.
+- **Traffic Management** — Kubernetes Gateway API and Traefik provide external application routing through shared gateway infrastructure.
+- **DNS and TLS Automation** — ExternalDNS integrates Kubernetes with Amazon Route 53, while cert-manager automates certificate lifecycle management.
+- **Security** — IRSA, Kyverno, NetworkPolicies, private worker nodes, security groups, External Secrets, and Kubernetes RBAC provide layered security controls.
+- **Observability** — Prometheus, Grafana, Alertmanager, kube-state-metrics, and node-exporter provide metrics collection, visualization, alerting, and infrastructure visibility.
+- **Workload Autoscaling** — HPA provides resource-based pod scaling, while KEDA provides Prometheus-driven autoscaling.
+- **Infrastructure Autoscaling** — Karpenter dynamically provisions EC2 capacity when Kubernetes workloads require additional compute and consolidates capacity when demand decreases.
+- **Persistent Storage** — the Amazon EBS CSI driver and `gp3` StorageClass provide dynamic persistent-volume provisioning.
+
+The architecture separates infrastructure provisioning from Kubernetes platform lifecycle management:
 
 ```text
-                           Internet
-                              |
-                              v
-                         Amazon Route 53
-                              |
-                              v
-                     AWS Load Balancer
-                              |
-                              v
-                     Kubernetes Gateway API
-                              |
-                              v
-                       Traefik Gateway
-                              |
-                              v
-                         HTTPRoute
-                              |
-                              v
-                      Application Workloads
-                              |
-              +---------------+---------------+
-              |               |               |
-              v               v               v
-            HPA             KEDA          NetworkPolicy
-              |               |
-              +-------+-------+
-                      |
-                      v
-                   Metrics
-                      |
-                      v
-                 Prometheus
-                      |
-                      v
-                   Grafana
-
-
-Git Repository
-      |
-      v
-   Argo CD
-      |
-      v
-Kubernetes Desired State
-      |
-      +-------------------------------+
-      |               |               |
-      v               v               v
-   Kyverno      External Secrets   cert-manager
-                      |               |
-                      v               v
-              AWS Secrets Manager  Let's Encrypt
-
-
-Pending Pods
-      |
-      v
-   Karpenter
-      |
-      v
-  EC2 Capacity
-      |
-      v
-   EKS Nodes
+                   Git Repository
+                         |
+                         v
+                      Argo CD
+                         |
+                         v
+               Kubernetes Desired State
+                         |
+                         v
+                    Amazon EKS
+                         ^
+                         |
+                 AWS Infrastructure
+                         ^
+                         |
+                      Terraform
 ```
-A detailed architecture discussion is available in:
+
+Terraform manages the underlying AWS infrastructure, while Argo CD manages the Kubernetes platform desired state stored in Git.
+
+Application traffic follows a separate runtime path:
+
+```text
+Internet
+   |
+   v
+Amazon Route 53
+   |
+   v
+AWS Load Balancer
+   |
+   v
+Kubernetes Gateway API
+   |
+   v
+Traefik Gateway
+   |
+   v
+HTTPRoute
+   |
+   v
+Application Workloads
 ```
-docs/architecture.md
+
+Platform controllers provide supporting capabilities around those workloads:
+
+```text
+Application Workloads
+        |
+        +------> Prometheus ------> Grafana / Alertmanager
+        |
+        +------> HPA / KEDA ------> Replica Scaling
+        |
+        +------> Karpenter -------> Dynamic EC2 Capacity
+        |
+        +------> Kyverno ---------> Admission Policy Enforcement
+        |
+        +------> NetworkPolicy ---> Network Isolation
+
+External Secrets ------> AWS Secrets Manager
+ExternalDNS -----------> Amazon Route 53
+cert-manager ----------> Automated TLS Certificates
+EBS CSI Driver --------> Amazon EBS / gp3
 ```
+
+This architecture provides three complementary control loops:
+
+**Infrastructure reconciliation**
+
+```text
+Terraform -> AWS Infrastructure -> Amazon EKS
+```
+
+**Platform reconciliation**
+
+```text
+Git -> Argo CD -> Kubernetes Desired State
+```
+
+**Runtime elasticity**
+
+```text
+Metrics / Events
+      |
+      v
+HPA / KEDA
+      |
+      v
+Pod Scaling
+      |
+      v
+Karpenter
+      |
+      v
+EC2 Node Capacity
+```
+
+Together, these layers provide a declarative, secure, observable, and dynamically scalable Kubernetes platform rather than simply an EKS cluster.
+
+For a detailed discussion of the architecture and individual platform components, see:
+
+[`docs/architecture.md`](docs/architecture.md)
+
+---
 # 4. Core Platform Capabilities
 
 | Capability           | Technology                | Purpose                                 |

@@ -19,6 +19,7 @@ The objective was not simply to provision an EKS cluster. The objective was to b
 # 1. High-Level Architecture
 
 The platform combines AWS infrastructure, Kubernetes platform services, GitOps, security controls, observability, and multiple autoscaling layers.
+![Enterprise Kubernetes Platform Architecture](../diagrams/enterprise-kubernetes-platform-architecture.png)
 
 ```text
                            Developers
