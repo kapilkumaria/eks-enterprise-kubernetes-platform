@@ -1,0 +1,93 @@
+========================================
+ ENTERPRISE KUBERNETES PLATFORM
+ FINAL RUNTIME VALIDATION
+========================================
+
+Sun Aug  9 10:18:09 PM MDT 2026
+
+===== NODES =====
+NAME                           STATUS   ROLES    AGE    VERSION               INTERNAL-IP    EXTERNAL-IP   OS-IMAGE                        KERNEL-VERSION                    CONTAINER-RUNTIME
+ip-10-30-11-51.ec2.internal    Ready    <none>   3h5m   v1.34.9-eks-254016e   10.30.11.51    <none>        Amazon Linux 2023.12.20260727   6.12.94-123.192.amzn2023.x86_64   containerd://2.2.5+unknown
+ip-10-30-11-87.ec2.internal    Ready    <none>   3h5m   v1.34.9-eks-254016e   10.30.11.87    <none>        Amazon Linux 2023.12.20260727   6.12.94-123.192.amzn2023.x86_64   containerd://2.2.5+unknown
+ip-10-30-12-120.ec2.internal   Ready    <none>   3h5m   v1.34.9-eks-254016e   10.30.12.120   <none>        Amazon Linux 2023.12.20260727   6.12.94-123.192.amzn2023.x86_64   containerd://2.2.5+unknown
+ip-10-30-12-79.ec2.internal    Ready    <none>   3h5m   v1.34.9-eks-254016e   10.30.12.79    <none>        Amazon Linux 2023.12.20260727   6.12.94-123.192.amzn2023.x86_64   containerd://2.2.5+unknown
+
+===== ARGO CD APPLICATIONS =====
+NAME                        SYNC STATUS   HEALTH STATUS
+cert-manager                Synced        Healthy
+cert-manager-certificates   Synced        Healthy
+cert-manager-config         Synced        Healthy
+enterprise-platform         Synced        Healthy
+external-dns                Synced        Healthy
+external-secrets            Synced        Healthy
+external-secrets-config     Synced        Healthy
+gateway-api-crds            Synced        Healthy
+gateway-smoke-test          Synced        Healthy
+karpenter                   Synced        Healthy
+karpenter-resources         Synced        Healthy
+keda                        Synced        Healthy
+keda-scaledobjects          Synced        Healthy
+kyverno                     Synced        Healthy
+kyverno-policies            Synced        Healthy
+metrics-server              Synced        Healthy
+network-policies            Synced        Healthy
+observability               Synced        Healthy
+observability-config        Synced        Healthy
+traefik-gateway             Synced        Healthy
+
+===== NON-HEALTHY PODS =====
+
+===== KARPENTER =====
+NAME      NODECLASS   NODES   READY   AGE
+default   default     0       True    44m
+NAME      READY   AGE
+default   True    44m
+
+===== KEDA =====
+NAMESPACE      NAME                SCALETARGETKIND      SCALETARGETNAME   MIN   MAX   READY   ACTIVE   FALLBACK   PAUSED   TRIGGERS     AUTHENTICATIONS   AGE
+gateway-demo   whoami-prometheus   apps/v1.Deployment   whoami            2     6     True    False    False      False    prometheus                     162m
+NAMESPACE      NAME     REFERENCE           TARGETS     MINPODS   MAXPODS   REPLICAS   AGE
+gateway-demo   whoami   Deployment/whoami   0/5 (avg)   2         6         2          162m
+
+===== KYVERNO =====
+NAME                               ADMISSION   BACKGROUND   READY   AGE    MESSAGE
+disallow-privileged-containers     true        true         True    168m   Ready
+require-resource-requests-limits   true        true         True    168m   Ready
+
+===== EXTERNAL SECRETS =====
+NAME                  AGE    STATUS   CAPABILITIES   READY
+aws-secrets-manager   166m   Valid    ReadWrite      True
+NAMESPACE      NAME                STORETYPE            STORE                 REFRESH INTERVAL   STATUS         READY   LAST SYNC
+gateway-demo   demo-app-database   ClusterSecretStore   aws-secrets-manager   1m                 SecretSynced   True    56s
+
+===== GATEWAY API =====
+NAMESPACE   NAME                    CLASS     ADDRESS                                                                         PROGRAMMED   AGE
+traefik     shared-public-gateway   traefik   a2fd06c64a6dd417f8ae9f593b005a79-243057956ca46aa3.elb.us-east-1.amazonaws.com   True         169m
+NAMESPACE      NAME                   HOSTNAMES                         AGE
+gateway-demo   whoami                 ["whoami-dev.kapilkumaria.com"]   168m
+gateway-demo   whoami-http-redirect   ["whoami-dev.kapilkumaria.com"]   168m
+
+===== CERTIFICATES =====
+NAMESPACE   NAME                                                READY   SECRET                      AGE
+traefik     certificate.cert-manager.io/whoami-dev-production   True    whoami-dev-production-tls   168m
+traefik     certificate.cert-manager.io/whoami-dev-staging      True    whoami-dev-staging-tls      168m
+
+NAMESPACE   NAME                                                   READY   AGE
+            clusterissuer.cert-manager.io/letsencrypt-production   True    168m
+            clusterissuer.cert-manager.io/letsencrypt-staging      True    168m
+
+===== STORAGE =====
+NAME   PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE
+gp2    kubernetes.io/aws-ebs   Delete          WaitForFirstConsumer   false                  3h10m
+gp3    ebs.csi.aws.com         Delete          WaitForFirstConsumer   true                   166m
+NAMESPACE    NAME                                                                                                             STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
+monitoring   alertmanager-observability-kube-prometh-alertmanager-db-alertmanager-observability-kube-prometh-alertmanager-0   Bound    pvc-c074d666-d35d-4c12-a8a4-624389dd8b40   2Gi        RWO            gp3            <unset>                 166m
+monitoring   observability-grafana                                                                                            Bound    pvc-366d7f83-cd74-464a-92b5-ec661dfd4df8   5Gi        RWO            gp3            <unset>                 167m
+monitoring   prometheus-observability-kube-prometh-prometheus-db-prometheus-observability-kube-prometh-prometheus-0           Bound    pvc-9285772b-7714-4eeb-b7e4-0c366728aff8   10Gi       RWO            gp3            <unset>                 166m
+NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                                                                                                                       STORAGECLASS   VOLUMEATTRIBUTESCLASS   REASON   AGE
+pvc-366d7f83-cd74-464a-92b5-ec661dfd4df8   5Gi        RWO            Delete           Bound    monitoring/observability-grafana                                                                                            gp3            <unset>                          166m
+pvc-9285772b-7714-4eeb-b7e4-0c366728aff8   10Gi       RWO            Delete           Bound    monitoring/prometheus-observability-kube-prometh-prometheus-db-prometheus-observability-kube-prometh-prometheus-0           gp3            <unset>                          166m
+pvc-c074d666-d35d-4c12-a8a4-624389dd8b40   2Gi        RWO            Delete           Bound    monitoring/alertmanager-observability-kube-prometh-alertmanager-db-alertmanager-observability-kube-prometh-alertmanager-0   gp3            <unset>                          166m
+
+===== PUBLIC ENDPOINT =====
+HTTPS 200
