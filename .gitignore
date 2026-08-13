@@ -1,45 +1,153 @@
-# ==========================
+# ============================================================
 # Terraform
-# ==========================
-.terraform/
+# ============================================================
+
+# Local Terraform working directories
+**/.terraform/*
+
+# Terraform state files
 *.tfstate
 *.tfstate.*
+
+# Terraform crash logs
 crash.log
+crash.*.log
+
+# Terraform override files
 override.tf
 override.tf.json
 *_override.tf
 *_override.tf.json
 
-# Keep provider lock file
-!.terraform.lock.hcl
-
-# Terraform variables
-*.auto.tfvars
-terraform.tfvars.local
-
-# ==========================
-# Kubernetes
-# ==========================
-kubeconfig
-*.kubeconfig
-
-# ==========================
-# AWS
-# ==========================
-*.pem
-
-# ==========================
-# IDE
-# ==========================
-.vscode/
-.idea/
-
-# ==========================
-# macOS / Linux
-# ==========================
-.DS_Store
-
 # Terraform saved plan files
 tfplan
 destroy.tfplan
 *.tfplan
+
+# Local Terraform variable files
+# Real environment-specific values should not be committed
+terraform.tfvars
+*.tfvars
+*.tfvars.json
+
+# Keep sanitized example variable files
+!*.tfvars.example
+
+# Terraform CLI configuration
+.terraformrc
+terraform.rc
+
+# Keep Terraform dependency lock files
+!.terraform.lock.hcl
+
+
+# ============================================================
+# Kubernetes
+# ============================================================
+
+# Local kubeconfig files
+kubeconfig
+*.kubeconfig
+
+# Kubernetes local/generated secret files
+*-secret.local.yaml
+*-secrets.local.yaml
+
+
+# ============================================================
+# Helm
+# ============================================================
+
+# Helm dependency archives
+*.tgz
+
+
+# ============================================================
+# AWS
+# ============================================================
+
+# Private key files
+*.pem
+
+# Local AWS credential/config files if accidentally copied
+.aws/
+credentials
+
+
+# ============================================================
+# Secrets / Credentials
+# ============================================================
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Private keys and certificates
+*.key
+*.p12
+*.pfx
+
+# Generic local secret files
+*.secret
+*.secrets
+
+
+# ============================================================
+# IDE / Editors
+# ============================================================
+
+.vscode/
+.idea/
+
+*.swp
+*.swo
+*~
+
+
+# ============================================================
+# Operating System
+# ============================================================
+
+.DS_Store
+Thumbs.db
+
+
+# ============================================================
+# Logs / Temporary Files
+# ============================================================
+
+*.log
+*.tmp
+*.temp
+
+tmp/
+temp/
+
+
+# ============================================================
+# Python
+# ============================================================
+
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+
+# ============================================================
+# Node.js
+# ============================================================
+
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+
+# ============================================================
+# Local Development
+# ============================================================
+
+.local/
+.cache/

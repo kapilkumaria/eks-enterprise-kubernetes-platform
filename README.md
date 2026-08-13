@@ -381,18 +381,18 @@ Terraform provisions the AWS infrastructure required by the platform.
 
 The infrastructure layer includes:
 
-VPC
-public subnets
-private subnets
-routing
-NAT connectivity
-security groups
-EKS
-managed worker nodes
-IAM roles
-OIDC integration
-EKS add-ons
-supporting IAM resources
+- VPC
+- public subnets
+- private subnets
+- routing
+- NAT connectivity
+- security groups
+- EKS
+- managed worker nodes
+- IAM roles
+- OIDC integration
+- EKS add-ons
+- supporting IAM resources
 
 Conceptually:
 
@@ -519,7 +519,7 @@ The platform applications converged to **Synced / Healthy**, demonstrating that 
 Application ingress is implemented using the Kubernetes Gateway API rather than relying exclusively on the traditional Ingress API.
 
 Primary resources include:
-
+```
 GatewayClass
      |
      v
@@ -533,7 +533,7 @@ Service
      |
      v
 Pods
-
+```
 Traefik acts as the Gateway API controller.
 
 This provides a structured separation between infrastructure-level gateway configuration and application routing configuration.
@@ -606,14 +606,18 @@ This validates the integrated traffic path rather than only verifying that the i
 
 Application secrets are not intended to be managed directly as plaintext values in Git.
 
-External Secrets Operator integrates Kubernetes with external secret stores.
+External Secrets Operator integrates Kubernetes workloads with AWS Secrets Manager, allowing application secrets to remain outside the Git repository while still being synchronized into Kubernetes when required.
 
 Conceptually:
-```
+
+```text
 AWS Secrets Manager
         |
         v
 External Secrets Operator
+        |
+        v
+ClusterSecretStore
         |
         v
 ExternalSecret
@@ -624,7 +628,53 @@ Kubernetes Secret
         v
 Application Pod
 ```
-AWS access is provided using IAM/OIDC integration rather than embedding long-lived AWS credentials in workloads.
+AWS access is provided using IAM/OIDC integration rather than embedding long-lived AWS credentials inside workloads.
+
+### External Secrets Runtime Validation
+
+The integration with AWS Secrets Manager was validated against the running EKS environment.
+
+![External Secrets AWS Secrets Manager Validation](docs/screenshots/security/external-secrets-aws-secrets-manager.png)
+
+Runtime validation confirmed that:
+
+- the ClusterSecretStore was successfully connected to AWS Secrets Manager
+- the ClusterSecretStore reported Valid and Ready=True
+- the application ExternalSecret reached SecretSynced and Ready=True
+- the resulting Kubernetes Secret contained the expected application database keys
+- AWS authentication was performed through workload identity/IAM integration rather than static AWS credentials stored in Git
+
+The synchronized application secret contained the expected keys:
+```
+DB_HOST
+DB_NAME
+DB_PASSWORD
+DB_PORT
+DB_USERNAME
+```
+This validates the complete secrets-management path:
+```
+AWS Secrets Manager
+        |
+        v
+IAM / OIDC Authentication
+        |
+        v
+External Secrets Operator
+        |
+        v
+ClusterSecretStore
+        |
+        v
+ExternalSecret
+        |
+        v
+Kubernetes Secret
+        |
+        v
+Application Workload
+```
+This approach separates secret values from application manifests and GitOps configuration while allowing Kubernetes workloads to consume externally managed secrets.
 
 ---
 
@@ -686,62 +736,142 @@ This confirms that the control operated in the Kubernetes admission path and act
 
 # 15. Kubernetes Network Security
 
-NetworkPolicy resources implement application-level traffic restrictions.
+Kubernetes `NetworkPolicy` resources implement application-level network segmentation and restrict unnecessary east-west communication between workloads.
 
-The protected namespace includes controls for:
-```
+The protected application namespace uses a default-deny security model with explicitly permitted traffic.
+
+The implemented controls include:
+
+```text
 default-deny ingress
 default-deny egress
 explicit DNS egress
-explicitly permitted gateway-to-application traffic
+explicit Traefik-to-application ingress
 ```
-The model follows:
-```
+
+The network security model follows:
+
+```text
 Default Deny
      |
-     +--> Explicit DNS
+     +--> Explicit DNS Egress
      |
      +--> Explicit Gateway Traffic
      |
      +--> Other Traffic Denied
 ```
-This reduces unrestricted east-west communication between workloads.
+
+This follows a least-privilege networking approach: workloads are denied network communication by default and only explicitly required communication paths are permitted.
+
+### NetworkPolicy Runtime Validation
+
+The application namespace was validated with the implemented Kubernetes NetworkPolicies active.
+
+![Kubernetes NetworkPolicy Validation](docs/screenshots/security/kubernetes-network-policies.png)
+
+The validation confirmed that the protected namespace contained:
+
+- a default-deny ingress policy
+- a default-deny egress policy
+- an explicit DNS egress policy
+- an explicit Traefik-to-application ingress policy
+
+The implemented policy set was:
+
+```text
+00-default-deny-ingress
+10-allow-traefik-ingress
+20-default-deny-egress
+30-allow-dns-egress
+```
+
+The resulting traffic model is:
+
+```text
+Traefik Gateway
+       |
+       | explicitly allowed
+       v
+Application Pods
+
+Application Pods
+       |
+       | DNS explicitly allowed
+       v
+Cluster DNS
+
+Other Unapproved Traffic
+       |
+       X
+     Denied
+```
+
+This reduces unrestricted pod-to-pod communication and demonstrates defense in depth by combining Kubernetes network segmentation with AWS VPC networking, security groups, IAM controls, TLS, admission policies, and external secrets management.
 
 ---
 
 # 16. Observability
 
-The platform includes a Kubernetes-native monitoring stack based on:
-```
+The platform includes a Kubernetes-native observability stack based on:
+
+```text
 Prometheus
 Grafana
 Alertmanager
 kube-state-metrics
 node-exporter
 Prometheus Operator
+ServiceMonitors
+PrometheusRules
 ```
-Conceptually:
-```
-Kubernetes
-     |
-     +--> Node Metrics
-     |
-     +--> Pod Metrics
-     |
-     +--> Application Metrics
-     |
-     v
-Prometheus
-     |
-     +--> Grafana
-     |
-     +--> Alertmanager
-```
-Prometheus provides the metrics foundation for both observability and metric-driven autoscaling.
 
-### Kubernetes Cluster Observability
+The monitoring architecture follows:
 
-The monitoring stack was validated using live Kubernetes cluster telemetry collected by Prometheus and visualized through Grafana.
+```text
+Kubernetes Cluster
+        |
+        +--> Node Metrics
+        |
+        +--> Pod Metrics
+        |
+        +--> Kubernetes Object Metrics
+        |
+        +--> Application / Controller Metrics
+        |
+        v
+    Prometheus
+        |
+        +------> Grafana
+        |
+        +------> Alertmanager
+        |
+        +------> KEDA
+```
+
+Prometheus provides the central metrics platform used for operational visibility, alerting, and Prometheus-driven KEDA autoscaling.
+
+### Observability Stack Runtime Validation
+
+The complete monitoring stack was validated in the running EKS cluster.
+
+![Observability Stack Runtime Validation](docs/screenshots/observability/observability-stack-runtime.png)
+
+Runtime validation confirmed that the primary observability components were operational, including:
+
+- Prometheus Operator
+- Prometheus
+- Grafana
+- Alertmanager
+- kube-state-metrics
+- node-exporter
+- ServiceMonitor resources
+- PrometheusRule resources
+
+This demonstrates that observability was implemented as an integrated platform capability rather than as an isolated dashboard installation.
+
+### Grafana Kubernetes Cluster Dashboard
+
+Live Kubernetes telemetry collected by Prometheus was visualized through Grafana.
 
 ![Grafana Kubernetes Cluster Dashboard](docs/screenshots/observability/grafana-kubernetes-cluster-dashboard.png)
 
@@ -754,9 +884,36 @@ The dashboard provides cluster-level visibility into:
 - namespace resource consumption
 - workload-level resource usage
 
-The underlying observability stack includes Prometheus Operator, Prometheus, Grafana, Alertmanager, kube-state-metrics, and node-exporter.
+The observability architecture also supports automated platform behavior.
 
-Prometheus metrics are also consumed by KEDA, allowing the same telemetry platform to support both operational visibility and automated scaling decisions.
+Prometheus metrics are consumed by KEDA for external metric-driven workload autoscaling:
+
+```text
+Kubernetes / Application Metrics
+              |
+              v
+          Prometheus
+          /        \
+         v          v
+     Grafana       KEDA
+       |             |
+       v             v
+ Visualization   Pod Scaling
+```
+
+This allows the same telemetry platform to serve multiple operational purposes:
+
+```text
+Metrics Collection
+       +
+Visualization
+       +
+Alerting
+       +
+Autoscaling Signals
+```
+
+The result is a unified observability layer that provides both human-facing operational insight through Grafana and machine-consumable metrics for automated scaling decisions.
 
 ---
 
@@ -783,47 +940,14 @@ Deployment Replicas
 
 # 18. Event-Driven Autoscaling with KEDA
 
-KEDA extends workload autoscaling beyond standard CPU and memory metrics.
+KEDA extends Kubernetes workload autoscaling beyond standard CPU and memory metrics by allowing workloads to scale from external metric sources.
 
-A Prometheus-backed `ScaledObject` was implemented for the demonstration workload.
+For this platform, a Prometheus-backed `ScaledObject` was implemented for the `whoami` demonstration workload.
 
-```text
-Application Metrics
-        |
-        v
-Prometheus
-        |
-        v
-KEDA
-        |
-        v
-HPA
-        |
-        v
-Deployment
-```
-
-The implementation was configured with:
+The autoscaling architecture follows:
 
 ```text
-ScaledObject: whoami-prometheus
-Target:       Deployment/whoami
-Minimum:      2
-Maximum:      6
-Ready:        True
-Trigger:      Prometheus
-```
-
-This demonstrates metric-driven workload autoscaling using an external Prometheus metric rather than relying only on CPU or memory utilization.
-
-### KEDA Prometheus Scale-Out Validation
-
-The KEDA implementation was tested using real HTTP traffic through the public Gateway API endpoint.
-
-The runtime scaling path was:
-
-```text
-External HTTP Load
+Application Traffic
         |
         v
 Traefik Gateway
@@ -844,27 +968,107 @@ KEDA-managed HPA
 Deployment Replicas
 ```
 
-Under load, the Prometheus metric exceeded the configured scaling threshold and KEDA activated the `ScaledObject`.
+The implementation was configured with:
+
+```text
+ScaledObject: whoami-prometheus
+Target:       Deployment/whoami
+Minimum:      2
+Maximum:      6
+Trigger:      Prometheus
+```
+
+This demonstrates metric-driven workload autoscaling using Prometheus telemetry rather than relying only on CPU or memory utilization.
+
+### Baseline Before Load
+
+Before generating traffic, the workload was validated at its configured baseline.
+
+![KEDA Baseline Before Load](docs/screenshots/autoscaling/keda-baseline-before-load.png)
+
+The baseline established the starting state of the scaling test:
+
+```text
+Deployment:        whoami
+Baseline replicas: 2
+Maximum replicas:  6
+ScaledObject:      Ready=True
+```
+
+Establishing a known baseline was important so that subsequent replica changes could be correlated directly with the generated workload and Prometheus metric.
+
+### Prometheus-Driven Scale Out
+
+Controlled HTTP traffic was then generated through the public Gateway API endpoint.
+
+As request traffic increased, Traefik exposed request metrics that were collected by Prometheus and queried by the KEDA Prometheus scaler.
+
+When the configured metric threshold was exceeded, KEDA activated the `ScaledObject` and the KEDA-managed HPA increased the number of application replicas.
 
 ![KEDA Prometheus Scale Out](docs/screenshots/autoscaling/keda-prometheus-scale-out.png)
 
 The scale-out validation demonstrated:
 
 ```text
-ScaledObject       Ready=True
-ScaledObject       Active=True
-Minimum replicas   2
-Maximum replicas   6
+ScaledObject:      Ready=True
+ScaledObject:      Active=True
+Minimum replicas:  2
+Maximum replicas:  6
 
 Application scaling:
 2 -> 4 -> 6 replicas
 ```
 
-The KEDA-managed HorizontalPodAutoscaler recorded successful rescaling events based on the external Prometheus metric.
+This confirmed that the external Prometheus metric was successfully influencing Kubernetes workload scaling.
 
-After the generated traffic was removed, the Prometheus request rate returned toward zero and the workload returned to its configured two-replica baseline after the cooldown and scale-down stabilization period.
+### KEDA-Managed HPA Rescale Events
 
-This validates the complete metric-driven workload scaling lifecycle:
+The scaling decision was also validated through Kubernetes HPA events.
+
+![KEDA HPA Rescale Events](docs/screenshots/autoscaling/keda-hpa-rescale-events.png)
+
+The HPA events provided Kubernetes-level evidence that replica changes were being performed in response to the external metric supplied through KEDA.
+
+The control loop can therefore be represented as:
+
+```text
+Prometheus Metric
+       |
+       v
+KEDA Scaler
+       |
+       v
+External Metrics API
+       |
+       v
+KEDA-managed HPA
+       |
+       v
+Deployment Replica Change
+```
+
+This is important because it demonstrates the actual interaction between KEDA and Kubernetes HPA rather than only showing that a `ScaledObject` resource existed.
+
+### Scale In and Baseline Recovery
+
+After the generated HTTP traffic was removed, the Prometheus request metric returned toward its idle state.
+
+Following the configured KEDA cooldown and Kubernetes HPA scale-down stabilization behavior, the Deployment returned to its original baseline.
+
+![KEDA Prometheus Scale In](docs/screenshots/autoscaling/keda-prometheus-scale-in.png)
+
+The final state demonstrated:
+
+```text
+Generated load:     Removed
+Prometheus demand:  Returned toward idle
+Deployment replicas:
+6 -> 2
+
+Baseline replicas:  2
+```
+
+This validated both directions of the workload autoscaling lifecycle:
 
 ```text
 Baseline
@@ -876,36 +1080,42 @@ Traffic Increase
 Prometheus Metric Increase
    |
    v
-KEDA Active
+KEDA Trigger Active
    |
    v
-Scale Out
+HPA Scale Out
+   |
+   v
+2 -> 4 -> 6 Pods
    |
    v
 Traffic Removed
    |
    v
+Metric Decreases
+   |
+   v
 Cooldown / Stabilization
    |
    v
-Scale In
+HPA Scale In
+   |
+   v
+6 -> 2 Pods
    |
    v
 Baseline Restored
 ```
 
-Detailed KEDA runtime evidence is retained under:
+The validation demonstrates that KEDA was not merely installed in the cluster; the complete Prometheus-driven autoscaling control loop was functionally tested from metric generation through scale-out and subsequent scale-in.
 
-```text
-docs/screenshots/autoscaling/
-```
 ---
 
 # 19. Dynamic Node Provisioning with Karpenter
 
-Karpenter provides dynamic Kubernetes worker-node provisioning.
+Karpenter provides dynamic Kubernetes worker-node provisioning based on actual Kubernetes scheduling requirements.
 
-It addresses a different scaling layer than HPA and KEDA.
+It operates at a different scaling layer than HPA and KEDA:
 
 ```text
 Application Demand
@@ -917,19 +1127,16 @@ HPA / KEDA
 Additional Pods
        |
        v
+Kubernetes Scheduler
+       |
+       v
 Unschedulable Pods
        |
        v
 Karpenter
        |
        v
-NodePool
-       |
-       v
-EC2NodeClass
-       |
-       v
-EC2 Instance
+Dynamic EC2 Capacity
 ```
 
 Karpenter was configured using:
@@ -937,6 +1144,7 @@ Karpenter was configured using:
 ```text
 NodePool
 EC2NodeClass
+NodeClaims
 IAM integration
 subnet discovery
 security group discovery
@@ -945,13 +1153,32 @@ Spot / On-Demand capacity support
 consolidation behavior
 ```
 
-The `EC2NodeClass` and `NodePool` were validated independently before introducing workload demand.
+This allows Kubernetes compute capacity to respond dynamically to workload scheduling pressure rather than relying exclusively on a statically sized managed node group.
 
-### Dynamic Node Provisioning Validation
+### NodePool and EC2NodeClass Readiness
 
-Karpenter was tested using a controlled workload with scheduling requirements that could not be satisfied by the existing managed-node-group capacity.
+Before testing dynamic provisioning, the Karpenter infrastructure configuration was validated.
 
-Before the test:
+![Karpenter NodePool and EC2NodeClass Ready](docs/screenshots/autoscaling/karpenter-nodepool-ec2nodeclass-ready.png)
+
+The primary Karpenter resources reached a ready state:
+
+```text
+EC2NodeClass/default    Ready=True
+NodePool/default        Ready=True
+```
+
+The `EC2NodeClass` defines the AWS-specific infrastructure requirements used when provisioning instances, while the `NodePool` defines Kubernetes-level scheduling and capacity constraints.
+
+Together, they provide the configuration Karpenter requires to translate Kubernetes scheduling demand into AWS EC2 capacity.
+
+### Baseline Before Scale Out
+
+Before introducing additional workload demand, the cluster baseline was captured.
+
+![Karpenter Baseline Before Scale Out](docs/screenshots/autoscaling/karpenter-before-scale-out.png)
+
+The baseline state was:
 
 ```text
 Managed EKS nodes:        4
@@ -959,9 +1186,20 @@ Karpenter NodePool nodes: 0
 NodeClaims:               0
 ```
 
-The dynamic provisioning flow was:
+This established that no Karpenter-provisioned worker capacity existed before the scale-out test.
+
+The four managed EKS nodes therefore represented the cluster's initial compute capacity.
+
+### Dynamic Node Provisioning
+
+Karpenter was then tested using a controlled workload with scheduling requirements that could not be satisfied by the existing cluster capacity.
+
+The provisioning flow was:
 
 ```text
+Workload Demand
+        |
+        v
 Unschedulable Pods
         |
         v
@@ -986,40 +1224,40 @@ Kubernetes Node Registration
 Pending Pods -> Running
 ```
 
-During the scale-out test, Karpenter created a new `NodeClaim`, selected suitable EC2 capacity, launched the instance, registered the worker with Kubernetes, and scheduled the test workload onto the newly provisioned node.
+Karpenter detected the unschedulable workload, evaluated the `NodePool` and `EC2NodeClass` constraints, created a `NodeClaim`, selected suitable EC2 capacity, launched the instance, and registered the new worker with Kubernetes.
 
 ![Karpenter Dynamic Node Scale Out](docs/screenshots/autoscaling/karpenter-dynamic-node-scale-out.png)
 
 The scale-out validation demonstrated:
 
 ```text
-Baseline worker nodes:     4
-Karpenter nodes before:    0
+Baseline cluster nodes:   4
+Karpenter nodes before:   0
 
 During demand:
-Karpenter NodeClaims:      1
-Karpenter NodePool nodes:  1
-Total cluster nodes:       5
+Karpenter NodeClaims:     1
+Karpenter NodePool nodes: 1
+Total cluster nodes:      5
 
 Selected capacity:
-Instance type:             c5a.xlarge
-Capacity type:             Spot
+Instance type:            c5a.xlarge
+Capacity type:            Spot
 ```
 
-This demonstrates that Karpenter was responding to Kubernetes scheduling pressure rather than simply maintaining a predefined EC2 node count.
+This demonstrates that Karpenter responded to Kubernetes scheduling pressure by dynamically provisioning additional infrastructure rather than maintaining a predefined EC2 node count.
 
 ### Node Consolidation and Scale-In
 
 After the test workload was removed, Karpenter's consolidation behavior was validated.
 
-The NodePool was configured with:
+The `NodePool` was configured with:
 
 ```text
 ConsolidationPolicy: WhenEmptyOrUnderutilized
 ConsolidateAfter:    1m
 ```
 
-Once the dynamically provisioned capacity was no longer required, Karpenter removed the `NodeClaim` and terminated the unnecessary worker capacity.
+Once the dynamically provisioned capacity was no longer required, Karpenter identified the unnecessary capacity, removed the `NodeClaim`, and terminated the corresponding EC2 worker.
 
 ![Karpenter Consolidation Scale In](docs/screenshots/autoscaling/karpenter-consolidation-scale-in.png)
 
@@ -1032,34 +1270,78 @@ NodeClaims:               0
 Test workload:            removed
 ```
 
-Together, the scale-out and consolidation tests demonstrate the complete infrastructure autoscaling lifecycle:
+The complete infrastructure autoscaling lifecycle demonstrated by the test was:
 
 ```text
-Demand
-  |
-  v
+Baseline Cluster
+       |
+       v
+Workload Demand
+       |
+       v
 Unschedulable Pods
-  |
-  v
-Dynamic EC2 Provisioning
-  |
-  v
-Workload Scheduling
-  |
-  v
-Demand Removed
-  |
-  v
+       |
+       v
+Karpenter Detects Capacity Requirement
+       |
+       v
+NodeClaim Created
+       |
+       v
+EC2 Instance Provisioned
+       |
+       v
+Node Joins EKS
+       |
+       v
+Pending Pods Scheduled
+       |
+       v
+Workload Demand Removed
+       |
+       v
 Node Becomes Unnecessary
-  |
-  v
+       |
+       v
 Karpenter Consolidation
-  |
-  v
-EC2 Capacity Removed
+       |
+       v
+NodeClaim Removed
+       |
+       v
+EC2 Capacity Terminated
+       |
+       v
+Baseline Restored
 ```
 
-This validates both dynamic infrastructure expansion and automated removal of unnecessary compute capacity.
+This validates both directions of infrastructure elasticity: **dynamic scale-out when Kubernetes requires additional compute capacity and automated scale-in when that capacity is no longer required**.
+
+It also demonstrates the separation between workload and infrastructure autoscaling:
+
+```text
+HPA / KEDA
+     |
+     | scale application replicas
+     v
+More Pods
+     |
+     | may create scheduling pressure
+     v
+Kubernetes Scheduler
+     |
+     v
+Unschedulable Pods
+     |
+     v
+Karpenter
+     |
+     | provisions infrastructure
+     v
+Additional EC2 Capacity
+```
+
+KEDA and HPA therefore determine **how many application replicas are required**, while Karpenter determines **whether additional worker-node capacity is required to run those Pods**.
 
 ---
 

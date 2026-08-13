@@ -14,8 +14,10 @@ desired_size = 4
 min_size     = 2
 max_size     = 4
 
+# Replace with the trusted CIDR allowed to access
+# the EKS public API endpoint.
 cluster_public_access_cidrs = [
-  "205.206.76.190/32"
+  "203.0.113.10/32"
 ]
 
 cloudwatch_log_retention_days = 30
@@ -28,8 +30,9 @@ enable_external_dns_irsa          = true
 external_dns_namespace            = "external-dns"
 external_dns_service_account_name = "external-dns"
 
+# Replace with your Route 53 hosted zone ID.
 external_dns_hosted_zone_ids = [
-  "Z0058793HC1B8WCMOEQ4"
+  "Z0123456789EXAMPLE"
 ]
 
 
