@@ -244,20 +244,22 @@ Several engineering principles guided the implementation.
 AWS infrastructure is defined through Terraform rather than being manually created.
 
 This improves:
-```
+
+```text
 reproducibility
 auditability
 consistency
 disaster recovery
 environment recreation
 ```
+
 ### Git as Desired State
 
 Kubernetes platform configuration is stored in Git.
 
 Argo CD continuously compares:
 
-```
+```text
 Git Desired State
         |
         v
@@ -266,26 +268,29 @@ Argo CD Reconciliation
         v
 Kubernetes Live State
 ```
+
 This reduces configuration drift and discourages unmanaged production changes.
 
 ### Separation of Platform and Application Concerns
 
 The repository separates:
 
+```text
 infrastructure
 platform components
 GitOps configuration
 application configuration
 environment configuration
 documentation
+```
 
 This mirrors the separation commonly used by platform engineering teams.
 
-### Least-Privilege Cloud Access:
+### Least-Privilege Cloud Access
 
 Kubernetes workloads requiring AWS API access use:
 
-```
+```text
 Kubernetes ServiceAccount
           |
           v
@@ -297,13 +302,14 @@ Kubernetes ServiceAccount
           v
       AWS IAM Role
 ```
+
 Applications do not require static AWS credentials stored inside container images.
 
 ### Defense in Depth
 
 Security controls exist across multiple layers:
 
-```
+```text
 AWS IAM
    +
 Private Networking
@@ -410,6 +416,14 @@ AWS Infrastructure
     |
     +--> EKS Add-ons
 ```
+### Deployed AWS Infrastructure
+
+The Terraform-managed development environment was validated directly through the AWS API after provisioning. The running environment included the Amazon EKS cluster, project VPC, multi-subnet networking, and managed worker-node group.
+
+![AWS EKS Infrastructure Validation](docs/screenshots/infrastructure/eks-aws-infrastructure.png)
+
+The infrastructure remained reproducible through Terraform, with networking, EKS, IAM, OIDC integration, add-ons, and supporting platform resources maintained as Infrastructure as Code.
+
 ---
 
 # 8. Amazon EKS Architecture
@@ -426,6 +440,14 @@ kube-proxy
 Amazon EBS CSI
 ```
 The architecture separates the managed Kubernetes control plane from worker compute capacity.
+
+### EKS Worker Node Validation
+
+The provisioned managed node group was validated after cluster bootstrap. All worker nodes successfully registered with the EKS control plane and reached the Kubernetes `Ready` state.
+
+![Amazon EKS Worker Nodes](docs/screenshots/infrastructure/eks-cluster-nodes.png)
+
+The worker nodes were deployed without public IP addresses, keeping application compute within the VPC networking model rather than directly exposing worker instances to the Internet.
 
 ---
 
@@ -468,6 +490,28 @@ application health visibility
 declarative deployment
 Git-based audit history
 ```
+### GitOps Platform Convergence
+
+The final platform state was validated through Argo CD after all platform components had reconciled successfully.
+
+![Argo CD Applications Synced and Healthy](docs/screenshots/gitops/argocd-all-applications-synced-healthy.png)
+
+The final Argo CD view demonstrates successful GitOps reconciliation across the platform, including:
+
+- cert-manager
+- ExternalDNS
+- External Secrets Operator
+- Gateway API
+- Traefik
+- Kyverno
+- NetworkPolicies
+- Metrics Server
+- Prometheus / Grafana
+- KEDA
+- Karpenter
+
+The platform applications converged to **Synced / Healthy**, demonstrating that the operational state of the cluster could be reconstructed from version-controlled desired state rather than manual cluster configuration.
+
 ---
 
 # 10. Kubernetes Gateway API
@@ -539,6 +583,22 @@ Kubernetes TLS Secret
 Gateway HTTPS Listener
 ```
 This architecture enables automated certificate issuance and renewal.
+
+### Gateway and TLS Runtime Validation
+
+The public application route was validated through the complete ingress path after DNS and certificate reconciliation.
+
+![Gateway API and TLS Validation](docs/screenshots/networking/gateway-api-tls-validation.png)
+
+The runtime validation confirmed:
+
+- the shared Traefik Gateway was `Programmed=True`
+- HTTPRoutes were present for the application
+- staging and production certificates were `Ready=True`
+- HTTPS requests returned `HTTP 200`
+- HTTP traffic was redirected to HTTPS
+
+This validates the integrated traffic path rather than only verifying that the individual Kubernetes resources existed.
 
 ---
 
@@ -612,6 +672,16 @@ A Pod without CPU and memory requests/limits was also intentionally submitted an
 
 This demonstrates that the policies were not only installed but functionally tested.
 
+### Admission Policy Enforcement Validation
+
+Policy enforcement was validated through negative testing rather than relying only on the existence of `ClusterPolicy` resources.
+
+![Kyverno Admission Policy Enforcement](docs/screenshots/security/kyverno-policy-enforcement.png)
+
+The validation demonstrates both healthy Kyverno policies and an intentional privileged-container deployment being rejected by the admission webhook.
+
+This confirms that the control operated in the Kubernetes admission path and actively prevented non-compliant workloads from entering the protected application namespace.
+
 ---
 
 # 15. Kubernetes Network Security
@@ -669,6 +739,25 @@ Prometheus
 ```
 Prometheus provides the metrics foundation for both observability and metric-driven autoscaling.
 
+### Kubernetes Cluster Observability
+
+The monitoring stack was validated using live Kubernetes cluster telemetry collected by Prometheus and visualized through Grafana.
+
+![Grafana Kubernetes Cluster Dashboard](docs/screenshots/observability/grafana-kubernetes-cluster-dashboard.png)
+
+The dashboard provides cluster-level visibility into:
+
+- CPU utilization
+- CPU requests and limits
+- memory utilization
+- memory requests and limits
+- namespace resource consumption
+- workload-level resource usage
+
+The underlying observability stack includes Prometheus Operator, Prometheus, Grafana, Alertmanager, kube-state-metrics, and node-exporter.
+
+Prometheus metrics are also consumed by KEDA, allowing the same telemetry platform to support both operational visibility and automated scaling decisions.
+
 ---
 
 # 17. Workload Autoscaling
@@ -696,8 +785,9 @@ Deployment Replicas
 
 KEDA extends workload autoscaling beyond standard CPU and memory metrics.
 
-A Prometheus-backed ScaledObject was implemented for the demonstration workload.
-```
+A Prometheus-backed `ScaledObject` was implemented for the demonstration workload.
+
+```text
 Application Metrics
         |
         v
@@ -712,8 +802,10 @@ HPA
         v
 Deployment
 ```
-The implementation was validated with:
-```
+
+The implementation was configured with:
+
+```text
 ScaledObject: whoami-prometheus
 Target:       Deployment/whoami
 Minimum:      2
@@ -721,8 +813,92 @@ Maximum:      6
 Ready:        True
 Trigger:      Prometheus
 ```
-This demonstrates event/metric-driven autoscaling using an external metrics source.
 
+This demonstrates metric-driven workload autoscaling using an external Prometheus metric rather than relying only on CPU or memory utilization.
+
+### KEDA Prometheus Scale-Out Validation
+
+The KEDA implementation was tested using real HTTP traffic through the public Gateway API endpoint.
+
+The runtime scaling path was:
+
+```text
+External HTTP Load
+        |
+        v
+Traefik Gateway
+        |
+        v
+Traefik Request Metrics
+        |
+        v
+Prometheus
+        |
+        v
+KEDA Prometheus Trigger
+        |
+        v
+KEDA-managed HPA
+        |
+        v
+Deployment Replicas
+```
+
+Under load, the Prometheus metric exceeded the configured scaling threshold and KEDA activated the `ScaledObject`.
+
+![KEDA Prometheus Scale Out](docs/screenshots/autoscaling/keda-prometheus-scale-out.png)
+
+The scale-out validation demonstrated:
+
+```text
+ScaledObject       Ready=True
+ScaledObject       Active=True
+Minimum replicas   2
+Maximum replicas   6
+
+Application scaling:
+2 -> 4 -> 6 replicas
+```
+
+The KEDA-managed HorizontalPodAutoscaler recorded successful rescaling events based on the external Prometheus metric.
+
+After the generated traffic was removed, the Prometheus request rate returned toward zero and the workload returned to its configured two-replica baseline after the cooldown and scale-down stabilization period.
+
+This validates the complete metric-driven workload scaling lifecycle:
+
+```text
+Baseline
+   |
+   v
+Traffic Increase
+   |
+   v
+Prometheus Metric Increase
+   |
+   v
+KEDA Active
+   |
+   v
+Scale Out
+   |
+   v
+Traffic Removed
+   |
+   v
+Cooldown / Stabilization
+   |
+   v
+Scale In
+   |
+   v
+Baseline Restored
+```
+
+Detailed KEDA runtime evidence is retained under:
+
+```text
+docs/screenshots/autoscaling/
+```
 ---
 
 # 19. Dynamic Node Provisioning with Karpenter
@@ -730,7 +906,8 @@ This demonstrates event/metric-driven autoscaling using an external metrics sour
 Karpenter provides dynamic Kubernetes worker-node provisioning.
 
 It addresses a different scaling layer than HPA and KEDA.
-```
+
+```text
 Application Demand
        |
        v
@@ -754,42 +931,151 @@ EC2NodeClass
        v
 EC2 Instance
 ```
+
 Karpenter was configured using:
-```
+
+```text
 NodePool
 EC2NodeClass
 IAM integration
 subnet discovery
 security group discovery
 instance constraints
+Spot / On-Demand capacity support
 consolidation behavior
 ```
-Scale-out was validated by creating workload demand that could not fit on existing nodes.
 
-Karpenter dynamically provisioned additional EC2 capacity.
+The `EC2NodeClass` and `NodePool` were validated independently before introducing workload demand.
 
-After demand was removed, consolidation behavior was also validated.
+### Dynamic Node Provisioning Validation
 
-This demonstrates both:
+Karpenter was tested using a controlled workload with scheduling requirements that could not be satisfied by the existing managed-node-group capacity.
+
+Before the test:
+
+```text
+Managed EKS nodes:        4
+Karpenter NodePool nodes: 0
+NodeClaims:               0
 ```
-Scale Out
-   +
-Scale In / Consolidation
+
+The dynamic provisioning flow was:
+
+```text
+Unschedulable Pods
+        |
+        v
+Karpenter Controller
+        |
+        v
+NodePool
+        |
+        v
+EC2NodeClass
+        |
+        v
+NodeClaim
+        |
+        v
+AWS EC2 Instance
+        |
+        v
+Kubernetes Node Registration
+        |
+        v
+Pending Pods -> Running
 ```
+
+During the scale-out test, Karpenter created a new `NodeClaim`, selected suitable EC2 capacity, launched the instance, registered the worker with Kubernetes, and scheduled the test workload onto the newly provisioned node.
+
+![Karpenter Dynamic Node Scale Out](docs/screenshots/autoscaling/karpenter-dynamic-node-scale-out.png)
+
+The scale-out validation demonstrated:
+
+```text
+Baseline worker nodes:     4
+Karpenter nodes before:    0
+
+During demand:
+Karpenter NodeClaims:      1
+Karpenter NodePool nodes:  1
+Total cluster nodes:       5
+
+Selected capacity:
+Instance type:             c5a.xlarge
+Capacity type:             Spot
+```
+
+This demonstrates that Karpenter was responding to Kubernetes scheduling pressure rather than simply maintaining a predefined EC2 node count.
+
+### Node Consolidation and Scale-In
+
+After the test workload was removed, Karpenter's consolidation behavior was validated.
+
+The NodePool was configured with:
+
+```text
+ConsolidationPolicy: WhenEmptyOrUnderutilized
+ConsolidateAfter:    1m
+```
+
+Once the dynamically provisioned capacity was no longer required, Karpenter removed the `NodeClaim` and terminated the unnecessary worker capacity.
+
+![Karpenter Consolidation Scale In](docs/screenshots/autoscaling/karpenter-consolidation-scale-in.png)
+
+The cluster returned to its original baseline:
+
+```text
+Managed EKS nodes:        4
+Karpenter NodePool nodes: 0
+NodeClaims:               0
+Test workload:            removed
+```
+
+Together, the scale-out and consolidation tests demonstrate the complete infrastructure autoscaling lifecycle:
+
+```text
+Demand
+  |
+  v
+Unschedulable Pods
+  |
+  v
+Dynamic EC2 Provisioning
+  |
+  v
+Workload Scheduling
+  |
+  v
+Demand Removed
+  |
+  v
+Node Becomes Unnecessary
+  |
+  v
+Karpenter Consolidation
+  |
+  v
+EC2 Capacity Removed
+```
+
+This validates both dynamic infrastructure expansion and automated removal of unnecessary compute capacity.
+
 ---
 
 # 20. Three Layers of Autoscaling
 
 A key architectural aspect of the project is the separation of autoscaling responsibilities.
-```
+
 | Layer                                | Technology | Responsibility                                  |
 | ------------------------------------ | ---------- | ----------------------------------------------- |
 | Resource-based workload scaling      | HPA        | Scale Pods based on CPU/resource metrics        |
 | Event/metric-driven workload scaling | KEDA       | Scale Pods based on Prometheus/external metrics |
-| Infrastructure scaling               | Karpenter  | Provision/remove EC2 worker capacity            |
-```
-Together:
-```
+| Infrastructure scaling               | Karpenter  | Provision and remove EC2 worker capacity        |
+
+These scaling mechanisms operate at different layers of the platform.
+
+```text
 Traffic / Demand
        |
        v
@@ -799,18 +1085,27 @@ Application Metrics
 HPA / KEDA
        |
        v
-More Pods
+Deployment Replica Scaling
        |
        v
-Scheduler Capacity Pressure
+Additional Pods
+       |
+       v
+Kubernetes Scheduler
+       |
+       v
+Insufficient Node Capacity
        |
        v
 Karpenter
        |
        v
-More Nodes
+Additional EC2 Capacity
 ```
-This is a core platform engineering design demonstrated by the project.
+
+HPA and KEDA determine **how many application Pods are required**, while Karpenter determines **whether additional infrastructure is required to schedule those Pods**.
+
+This separation of responsibilities is an important platform-engineering design demonstrated by the project.
 
 ---
 
@@ -876,14 +1171,15 @@ dedicated DNS and certificate configuration
 
 # 23. Reproducing the Platform
 
-Important: cloud resources created by this project can incur AWS charges.
+> **Important:** Cloud resources created by this project can incur AWS charges.
 
-The repository is designed so that the platform can be recreated from source-controlled configuration.
+The repository is designed so that the platform can be recreated from source-controlled infrastructure and Kubernetes configuration.
 
 ## Prerequisites
 
 Typical prerequisites include:
-```
+
+```text
 AWS account
 AWS CLI
 Terraform
@@ -893,95 +1189,184 @@ Argo CD CLI
 Git
 appropriate AWS IAM permissions
 ```
-## Step 1 — Clone Repository
-```
+
+## Step 1 — Clone the Repository
+
+```bash
 git clone https://github.com/kapilkumaria/eks-enterprise-kubernetes-platform.git
 
 cd eks-enterprise-kubernetes-platform
 ```
+
 ## Step 2 — Provision AWS Infrastructure
 
 Navigate to the Terraform development environment:
-```
+
+```bash
 cd terraform/aws/environments/dev
 ```
+
 Initialize Terraform:
-```
+
+```bash
 terraform init
 ```
-Validate configuration:
-```
+
+Validate the Terraform configuration:
+
+```bash
 terraform validate
 ```
+
 Review the execution plan:
-```
+
+```bash
 terraform plan
 ```
+
 Provision the infrastructure:
-```
+
+```bash
 terraform apply
 ```
+
+Terraform creates the AWS infrastructure required by the platform, including networking, EKS, IAM integrations, worker capacity, EKS add-ons, and Karpenter-related AWS resources.
+
 ## Step 3 — Configure kubectl
 
-After EKS becomes available:
-```
+After the EKS cluster becomes available:
+
+```bash
 aws eks update-kubeconfig \
   --region us-east-1 \
   --name eks-enterprise-platform-dev
 ```
+
 Validate connectivity:
-```
+
+```bash
 kubectl get nodes
 ```
+
+All managed worker nodes should eventually reach:
+
+```text
+STATUS
+Ready
+```
+
 ## Step 4 — Bootstrap GitOps
 
-Bootstrap Argo CD using the repository's bootstrap configuration.
+Bootstrap Argo CD and deploy the platform project and root App-of-Apps configuration using the repository manifests under:
 
-Then deploy the platform project and root application using the manifests under:
-```
+```text
 argocd/
 ├── bootstrap/
 ├── projects/
 └── app-of-apps/
 ```
-After the root application is created, Argo CD becomes responsible for reconciling the remaining platform components.
+
+After the root application is created, Argo CD becomes responsible for reconciling the Kubernetes platform components stored in Git.
+
+The platform applications are defined under:
+
+```text
+argocd/applications/
+```
 
 ## Step 5 — Validate Argo CD
-kubectl get applications -n argocd
 
-The expected objective is for platform applications to converge toward:
+Validate application reconciliation:
+
+```bash
+kubectl get applications -n argocd
 ```
+
+The target state for deployed platform applications is:
+
+```text
 SYNC STATUS     HEALTH STATUS
 Synced          Healthy
 ```
-Some operators may temporarily report intermediate reconciliation states during installation.
+
+Some operators may temporarily report intermediate reconciliation states during initial installation while CRDs, controllers, webhooks, or dependent resources become available.
 
 ## Step 6 — Validate Platform Components
 
-Example validation commands:
-```
+Validate Kubernetes nodes:
+
+```bash
 kubectl get nodes
+```
 
+Validate Gateway API resources:
+
+```bash
 kubectl get gatewayclass
+
 kubectl get gateway -A
+
 kubectl get httproute -A
+```
 
+Validate Kyverno:
+
+```bash
 kubectl get clusterpolicy
+```
 
+Validate NetworkPolicies:
+
+```bash
 kubectl get networkpolicy -A
+```
 
+Validate KEDA:
+
+```bash
 kubectl get scaledobject -A
 
-kubectl get ec2nodeclass
-kubectl get nodepool
-kubectl get nodeclaims
+kubectl get hpa -A
+```
 
+Validate Karpenter:
+
+```bash
+kubectl get ec2nodeclass
+
+kubectl get nodepool
+
+kubectl get nodeclaim
+```
+
+Validate storage:
+
+```bash
 kubectl get storageclass
 
+kubectl get pvc -A
+
+kubectl get pv
+```
+
+Validate Kubernetes resource metrics:
+
+```bash
 kubectl top nodes
 
+kubectl top pods -A
+```
+
+Validate overall runtime state:
+
+```bash
 kubectl get pods -A
 ```
+
+Detailed deployment and operational instructions are documented in:
+
+[`docs/deployment-guide.md`](docs/deployment-guide.md)
+
 ---
 
 # 24. Platform Validation
@@ -1246,80 +1631,369 @@ Production implementation would therefore include tested backup and restore proc
 
 ---
 
-# 29. Evidence and Screenshots
+# 29. Runtime Evidence
 
-The final portfolio includes evidence captured from the running environment.
+The platform was recreated from source-controlled Terraform and GitOps configuration and validated against a live Amazon EKS environment.
 
-Screenshots are added after recreating the EKS platform to avoid keeping AWS resources running solely for documentation purposes.
+Runtime evidence captured during validation is stored under:
 
-## Planned Evidence
-## AWS / EKS
-```
- EKS cluster overview
- EKS worker nodes
- AWS VPC/subnet architecture
-```
-## Argo CD
-```
- Argo CD Applications overview
- App-of-Apps hierarchy
- Synced/Healthy platform applications
- ```
-## Gateway API
-```
- GatewayClass
- Gateway
- HTTPRoute
- application accessed through public endpoint
-```
-## Security
-```
- Kyverno ClusterPolicies
- privileged Pod rejection
- resource requests/limits rejection
- NetworkPolicies
- External Secrets synchronization
-```
-## Observability
-```
-Prometheus
- Grafana dashboard
- Kubernetes node metrics
- application metrics
-```
-## Autoscaling
-```
- HPA scaling
- KEDA ScaledObject
- Prometheus metric trigger
- Karpenter NodeClaim
- dynamically provisioned EC2 node
- Karpenter consolidation
-```
-## Storage
-```
- gp3 StorageClass
- PVC/PV validation
-```
-Suggested repository organization:
-```
+```text
 docs/
-└── evidence/
-
-diagrams/
-├── platform-architecture.png
-├── gitops-flow.png
-└── autoscaling-flow.png
-
-screenshots/
-├── aws/
-├── argocd/
-├── gateway/
-├── security/
-├── observability/
-├── autoscaling/
-└── storage/
+├── evidence/
+│   ├── autoscaling/
+│   └── final/
+│
+└── screenshots/
+    ├── autoscaling/
+    ├── gitops/
+    ├── infrastructure/
+    ├── networking/
+    ├── observability/
+    └── security/
 ```
+
+The captured evidence validates the platform across multiple engineering domains.
+
+## AWS and EKS Infrastructure
+
+Validation confirmed:
+
+- the Amazon EKS cluster was `ACTIVE`
+- the managed node group was operational
+- worker nodes successfully registered with the cluster
+- all managed worker nodes reached the Kubernetes `Ready` state
+- VPC and subnet integration was operational
+- EKS add-ons were operational
+
+Supporting evidence:
+
+[`eks-aws-infrastructure.png`](docs/screenshots/infrastructure/eks-aws-infrastructure.png)
+
+[`eks-cluster-nodes.png`](docs/screenshots/infrastructure/eks-cluster-nodes.png)
+
+## GitOps
+
+Argo CD validation confirmed:
+
+- the App-of-Apps architecture was operational
+- platform components were reconciled from Git
+- automated synchronization and pruning were enabled
+- deployed platform applications converged to `Synced / Healthy`
+
+The final Argo CD application state included components such as:
+
+```text
+cert-manager
+ExternalDNS
+External Secrets Operator
+Gateway API
+Traefik
+Kyverno
+Metrics Server
+NetworkPolicies
+Prometheus / Grafana
+KEDA
+Karpenter
+```
+
+Supporting evidence:
+
+[`argocd-all-applications-synced-healthy.png`](docs/screenshots/gitops/argocd-all-applications-synced-healthy.png)
+
+## Gateway API, DNS and TLS
+
+Runtime validation confirmed:
+
+- the Traefik Gateway was programmed successfully
+- HTTPRoutes were accepted
+- ExternalDNS integrated the application endpoint with Amazon Route 53
+- cert-manager issued TLS certificates
+- staging and production certificates reached `Ready=True`
+- HTTPS requests returned `HTTP 200`
+- HTTP requests were redirected to HTTPS
+
+Supporting evidence:
+
+[`gateway-api-tls-validation.png`](docs/screenshots/networking/gateway-api-tls-validation.png)
+
+## Secrets Management
+
+External Secrets Operator integration was validated against AWS Secrets Manager.
+
+Validation confirmed:
+
+- the `ClusterSecretStore` was valid
+- the `ExternalSecret` synchronized successfully
+- the generated Kubernetes Secret contained the expected application database keys
+- secret values were retrieved through AWS integration rather than stored directly in Git
+
+Supporting evidence:
+
+[`external-secrets-aws-secrets-manager.png`](docs/screenshots/security/external-secrets-aws-secrets-manager.png)
+
+## Policy Enforcement
+
+Kyverno admission policies were validated using positive and negative tests.
+
+The implemented controls included:
+
+```text
+privileged-container prohibition
+mandatory CPU requests and limits
+mandatory memory requests and limits
+```
+
+Negative testing confirmed that intentionally non-compliant workloads were rejected by the Kyverno admission webhook.
+
+Supporting evidence:
+
+[`kyverno-policy-enforcement.png`](docs/screenshots/security/kyverno-policy-enforcement.png)
+
+## Kubernetes Network Security
+
+NetworkPolicy validation confirmed:
+
+```text
+default-deny ingress
+default-deny egress
+explicit DNS egress
+explicit Traefik-to-application ingress
+AWS VPC CNI NetworkPolicy integration
+```
+
+Supporting evidence:
+
+[`kubernetes-network-policies.png`](docs/screenshots/security/kubernetes-network-policies.png)
+
+## Observability
+
+The observability platform was validated with:
+
+```text
+Prometheus
+Prometheus Operator
+Grafana
+Alertmanager
+kube-state-metrics
+node-exporter
+ServiceMonitors
+PrometheusRules
+Kubernetes node metrics
+Kubernetes Pod metrics
+```
+
+Grafana successfully visualized live Kubernetes resource utilization including CPU, memory, requests, limits, namespace-level usage, and workload resource consumption.
+
+Supporting evidence:
+
+[`observability-stack-runtime.png`](docs/screenshots/observability/observability-stack-runtime.png)
+
+[`grafana-kubernetes-cluster-dashboard.png`](docs/screenshots/observability/grafana-kubernetes-cluster-dashboard.png)
+
+## KEDA Workload Autoscaling
+
+KEDA Prometheus autoscaling was validated through controlled HTTP load generation.
+
+The autoscaling path was:
+
+```text
+HTTP Traffic
+     |
+     v
+Traefik Metrics
+     |
+     v
+Prometheus
+     |
+     v
+KEDA Prometheus Trigger
+     |
+     v
+KEDA-managed HPA
+     |
+     v
+Deployment Replica Scaling
+```
+
+The scale-out test demonstrated:
+
+```text
+Baseline replicas: 2
+
+Under load:
+2 -> 4 -> 6 replicas
+
+ScaledObject:
+Ready=True
+Active=True
+
+Configured range:
+Min=2
+Max=6
+```
+
+The HPA events confirmed successful rescaling based on the external Prometheus metric.
+
+After generated load was removed, the metric returned toward zero and the Deployment returned to its two-replica baseline following the configured cooldown and scale-down stabilization period.
+
+Supporting evidence:
+
+[`keda-baseline-before-load.png`](docs/screenshots/autoscaling/keda-baseline-before-load.png)
+
+[`keda-prometheus-scale-out.png`](docs/screenshots/autoscaling/keda-prometheus-scale-out.png)
+
+[`keda-hpa-rescale-events.png`](docs/screenshots/autoscaling/keda-hpa-rescale-events.png)
+
+[`keda-prometheus-scale-in.png`](docs/screenshots/autoscaling/keda-prometheus-scale-in.png)
+
+## Karpenter Infrastructure Autoscaling
+
+Karpenter was validated independently from workload autoscaling.
+
+Before the scale-out test:
+
+```text
+Managed EKS nodes:        4
+Karpenter NodePool nodes: 0
+NodeClaims:               0
+```
+
+A controlled workload was introduced that could not be scheduled using the existing cluster capacity.
+
+The provisioning path was:
+
+```text
+Unschedulable Pods
+        |
+        v
+Karpenter
+        |
+        v
+NodePool
+        |
+        v
+EC2NodeClass
+        |
+        v
+NodeClaim
+        |
+        v
+AWS EC2 Instance
+        |
+        v
+Kubernetes Node
+```
+
+Karpenter dynamically provisioned additional EC2 capacity.
+
+The scale-out test demonstrated:
+
+```text
+Baseline cluster nodes:   4
+Dynamic Karpenter nodes:  1
+Total cluster nodes:      5
+
+NodeClaim:                Ready=True
+Instance type:            c5a.xlarge
+Capacity type:            Spot
+```
+
+Supporting evidence:
+
+[`karpenter-nodepool-ec2nodeclass-ready.png`](docs/screenshots/autoscaling/karpenter-nodepool-ec2nodeclass-ready.png)
+
+[`karpenter-before-scale-out.png`](docs/screenshots/autoscaling/karpenter-before-scale-out.png)
+
+[`karpenter-dynamic-node-scale-out.png`](docs/screenshots/autoscaling/karpenter-dynamic-node-scale-out.png)
+
+## Karpenter Consolidation
+
+After the test workload was removed, Karpenter consolidation was validated.
+
+The NodePool was configured with:
+
+```text
+ConsolidationPolicy: WhenEmptyOrUnderutilized
+ConsolidateAfter:    1m
+```
+
+Once the dynamically provisioned capacity was no longer required:
+
+```text
+NodeClaim removed
+        |
+        v
+Dynamic EC2 capacity terminated
+        |
+        v
+NodePool returned to 0 nodes
+        |
+        v
+Cluster returned to 4-node baseline
+```
+
+Final state:
+
+```text
+Managed EKS nodes:        4
+Karpenter NodePool nodes: 0
+NodeClaims:               0
+Test workload:            removed
+```
+
+Supporting evidence:
+
+[`karpenter-consolidation-scale-in.png`](docs/screenshots/autoscaling/karpenter-consolidation-scale-in.png)
+
+## Persistent Storage
+
+Persistent storage was validated using the Amazon EBS CSI driver and a `gp3` StorageClass.
+
+The StorageClass was configured with:
+
+```text
+Provisioner:          ebs.csi.aws.com
+ReclaimPolicy:        Delete
+VolumeBindingMode:    WaitForFirstConsumer
+AllowVolumeExpansion: true
+Encrypted:            true
+```
+
+Persistent volumes were dynamically provisioned for observability components including:
+
+```text
+Prometheus    10Gi
+Grafana        5Gi
+Alertmanager   2Gi
+```
+
+All associated PVCs reached the `Bound` state.
+
+## Final Platform State
+
+At final validation, the platform demonstrated:
+
+```text
+EKS worker nodes                 Ready
+Argo CD applications             Synced / Healthy
+Gateway API                      Operational
+TLS certificates                 Ready
+ExternalDNS                      Operational
+External Secrets                 Operational
+Kyverno policies                 Ready / Enforcing
+NetworkPolicies                  Present
+Prometheus                       Operational
+Grafana                          Operational
+Alertmanager                     Operational
+Metrics Server                   Operational
+KEDA                             Operational
+Karpenter                        Operational
+EBS CSI / gp3                    Operational
+Unexpected Pending/Failed Pods   None
+```
+
+The evidence demonstrates not only that the platform components were installed, but that their runtime behavior was validated across infrastructure provisioning, GitOps reconciliation, networking, security, observability, workload autoscaling, infrastructure autoscaling, and persistent storage.
+
 ---
 
 # 30. What This Project Demonstrates
@@ -1481,11 +2155,26 @@ Validate
 
 # 32. Documentation
 
-For a deeper technical discussion of the architecture, design decisions, component interactions, security model, autoscaling model and production considerations, see:
+Additional engineering documentation is available in:
+
+- [`Architecture`](docs/architecture.md)
+- [`Deployment Guide`](docs/deployment-guide.md)
+- [`Security`](docs/security.md)
+- [`Troubleshooting`](docs/troubleshooting.md)
+
+Runtime validation evidence is maintained under:
+
+```text
+docs/evidence/
 ```
-docs/architecture.md
+
+Captured runtime screenshots are maintained under:
+
+```text
+docs/screenshots/
 ```
-The README intentionally provides the recruiter and hiring-manager overview while the architecture document provides the engineering deep dive.
+
+The root README provides the project and platform overview, while the documents under `docs/` provide deeper implementation, operational, security, architecture, and troubleshooting detail.
 
 ---
 
