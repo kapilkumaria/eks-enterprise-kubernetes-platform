@@ -56,11 +56,16 @@ resource "aws_subnet" "private" {
   cidr_block        = local.private_subnet_cidrs[count.index]
   availability_zone = local.availability_zones[count.index]
 
-  tags = merge(local.common_tags, {
-    Name                              = "${local.name_prefix}-private-${count.index + 1}"
-    "kubernetes.io/role/internal-elb" = "1"
-    "karpenter.sh/discovery"          = "${var.project_name}-${var.environment}"
-  })
+  tags = merge(
+    local.common_tags,
+    {
+      Name                              = "${local.name_prefix}-private-${count.index + 1}"
+      "kubernetes.io/role/internal-elb" = "1"
+    },
+    var.karpenter_discovery_tag == null ? {} : {
+      "karpenter.sh/discovery" = var.karpenter_discovery_tag
+    }
+  )
 }
 
 resource "aws_eip" "nat" {

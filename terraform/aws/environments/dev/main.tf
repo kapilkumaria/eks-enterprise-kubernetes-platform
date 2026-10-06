@@ -4,6 +4,8 @@ module "networking" {
   project_name = var.project_name
   environment  = var.environment
   vpc_cidr     = var.vpc_cidr
+
+  karpenter_discovery_tag = "${var.project_name}-${var.environment}"
 }
 
 module "eks" {
